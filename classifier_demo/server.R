@@ -3,6 +3,9 @@
 library(shiny)
 library(ggplot2)
 library(DT)
+library(dplyr)
+library(tidyr)
+library(magrittr)
 
 shinyServer(function(input, output) {
   
@@ -40,23 +43,29 @@ shinyServer(function(input, output) {
     
   })
   
-  output$classificationTable <- renderDT({
+  output$classificationTable <- renderTable({
     if (!is.null(data_and_trigger$all_data)) {
       # Calculate decision boundary
       boundary <- decision_boundary()
       
       # Create a data frame for detailed classification results
       classification_results <- data.frame(
-        True_Group = data_and_trigger$all_data$Group,
+        Group = data_and_trigger$all_data$Group,
         Above_Below_Line = ifelse(data_and_trigger$all_data$Variable2 > boundary, "Above", "Below")
       )
       
-      return(DT::datatable(classification_results))
+      # Summary table with aggregated results
+      summary_table <- classification_results %>%
+        group_by(Group, Above_Below_Line) %>%
+        summarise(Count = n()) %>%
+        ungroup() %>%
+        pivot_wider(names_from = Above_Below_Line, values_from = Count, values_fill = 0)
+      
+      return(summary_table)
     } else {
       return(NULL)
     }
   })
-  
   
   # Display a scatterplot with user-defined decision boundary
   output$scatterPlot <- renderPlot({
@@ -75,15 +84,6 @@ shinyServer(function(input, output) {
       predictions <- ifelse(data_and_trigger$all_data$Variable2 > boundary, "Group 2", "Group 1")
       accuracy_group1 <- sum(predictions[data_and_trigger$all_data$Group == "Group 1"] == "Group 1") / sum(data_and_trigger$all_data$Group == "Group 1") * 100
       accuracy_group2 <- sum(predictions[data_and_trigger$all_data$Group == "Group 2"] == "Group 2") / sum(data_and_trigger$all_data$Group == "Group 2") * 100
-      
-      # Display accuracy rates in the UI
-      output$accuracyGroup1 <- renderText({
-        paste("Accuracy Rate (Group 1):", round(accuracy_group1, 2), "%")
-      })
-      
-      output$accuracyGroup2 <- renderText({
-        paste("Accuracy Rate (Group 2):", round(accuracy_group2, 2), "%")
-      })
       
       # Plot scatterplot using aes_string
       ggplot(data_and_trigger$all_data, aes_string(x = "Variable1", y = "Variable2", color = "Group")) +

@@ -36,9 +36,9 @@ shinyUI(fluidPage(
         column(width = 4,
                # Sliders for intercept and slope
                h4("Decision Boundary Parameters"),
-               sliderInput("intercept", "Intercept:", min = -10, max = 10, value = 0),
                sliderInput("slope", "Slope:", min = -5, max = 5, value = 1),
-               DTOutput("classificationTable")
+               sliderInput("intercept", "Intercept:", min = -10, max = 10, value = 0),
+               tableOutput("classificationTable")
         )
       )
     )
