@@ -4,6 +4,8 @@ library(MASS)
 library(ggplot2)
 library(tidyr)
 library(dplyr)
+library(magrittr)
+library(caret)
 
 # general hint: remember to call and assign reactive values myvar <- reactiveVal(NULL) using parantheses () by myvar()
 # this is not the case for reactiveValues()
@@ -68,14 +70,16 @@ ui = dashboardPage(
     box(title = 'Task description',
         width = 12,
         fluidRow(
-          column(width = 3, "There are given two groups of people where something was observed. Please try to seperate these two groups as good as possible by drawing a straight line into the scatterplot.",),
-          column(width = 3, 
+          column(width = 2, "There are given two groups of people where something was observed. Please try to seperate these two groups as good as possible by drawing a straight line into the scatterplot.",),
+          column(width = 2, 
                  align = "center", 
                  radioButtons("drawType", label = '',
                               choices = c("Draw linear function", "Draw freehand line"),
                               selected = "Draw linear function")
                  ),
-          column(width = 6, align = "center", tableOutput("classificationTable"))
+          column(width = 2, align = "right", tableOutput("AboveBelowTable")),
+          column(width = 3, align = "center", verbatimTextOutput("classificationRule")),
+          column(width = 3, align = "center", tableOutput("classificationTable"))
           )
         ),
     box(
@@ -96,8 +100,8 @@ ui = dashboardPage(
       # Display mouse and boundary information
       verbatimTextOutput("mouse_position"), 
       fluidRow(
-        column(width = 6, verbatimTextOutput("click_info")),
-        column(width = 6, verbatimTextOutput("boundary_info"))
+        column(width = 4, verbatimTextOutput("click_info")),
+        column(width = 4, verbatimTextOutput("boundary_info"))
       ),
       collapsed = TRUE
     )
@@ -152,12 +156,76 @@ server = function(input, output, session) {
   # Create data frame for classification results
   classification_results <- reactive({
     req(decision_boundary())
-    data.frame(Group = data()$Group,
-               Above_Below_Line = ifelse(data()$Variable2 > decision_boundary(), "Above", "Below")
+    tmp_df <- data.frame(Group = data()$Group,
+               Above_Below_Line = as.factor(ifelse(data()$Variable2 > decision_boundary(), "Above", "Below"))
                )
-    })
+    tmp_df %<>% mutate(linear_classification_group1_below = as.factor(ifelse(Above_Below_Line == 'Below', 'Group1', 'Group2')), 
+                       linear_classification_group1_above = as.factor(ifelse(Above_Below_Line == 'Above', 'Group1', 'Group2')))
+    
+    # Calculate F1 score for linear_classification_group1_below
+    tmp_below <- confusionMatrix(
+      tmp_df$Group,
+      tmp_df$linear_classification_group1_below,
+      positive = "Group1"
+    )
+    
+    # Calculate F1 score for linear_classification_group1_above
+    tmp_above <- confusionMatrix(
+      tmp_df$Group,
+      tmp_df$linear_classification_group1_above,
+      positive = "Group1"
+    )
+    
+    # Check for perfect separation
+    perfect_separation <- is.nan(tmp_below$byClass[7]) || is.nan(tmp_above$byClass[7])
+    
+    # Determine which classification to choose based on F1 scores
+    if (perfect_separation) {
+      # Handle perfect separation case
+      # For example, choose the classification with the most observations
+      if (sum(tmp_df$Group == "Group1") > sum(tmp_df$Group == "Group2")) {
+        tmp_df %<>%
+          select(-linear_classification_group1_above) %>%
+          rename(linear_classification = linear_classification_group1_below)
+      } else {
+        tmp_df %<>%
+          select(-linear_classification_group1_below) %>%
+          rename(linear_classification = linear_classification_group1_above)
+      }
+    } else {
+      # Regular case: choose based on F1 scores
+      if (tmp_below$byClass[7] >= tmp_above$byClass[7]) {
+        tmp_df %<>%
+          select(-linear_classification_group1_above) %>%
+          rename(linear_classification = linear_classification_group1_below)
+      } else {
+        tmp_df %<>%
+          select(-linear_classification_group1_below) %>%
+          rename(linear_classification = linear_classification_group1_above)
+      }
+    }
+    
+    return(tmp_df)
+  })
+  
+  
   
   output$classificationTable <- renderTable({
+    req(classification_results())
+    # Calculate confusion matrix 
+    summary_table <- classification_results() %>%
+      group_by(Group, linear_classification) %>%
+      summarise(Count = n()) %>%
+      ungroup() %>%
+      pivot_wider(names_from = linear_classification, values_from = Count, values_fill = 0)
+    
+    # Modify column names
+    colnames(summary_table) <- c('true group', paste0("pred_", unique(classification_results()$linear_classification)))
+    
+    return(summary_table)
+  })
+  
+  output$AboveBelowTable <- renderTable({
     if (!is.null(data()) && !is.null(classification_results)) {
       # Summary table with aggregated results
       summary_table <- classification_results() %>%
@@ -237,12 +305,6 @@ server = function(input, output, session) {
     clickedPoints$click_coords
   })
   
-  output$boundary_info <- renderPrint({
-    cat("Decision Boundary Parameters:\n")
-    cat("Slope: ", decision_boundary_parameters$slope, "\n")
-    cat("Intercept: ", decision_boundary_parameters$intercept)
-  })
-  
   output$mouse_position <- renderPrint({
     # Display the most recent mouse position
     if (!is.null(mouse_position())) {
@@ -253,6 +315,12 @@ server = function(input, output, session) {
     } else {
       'Not yet any mouse position on scatterplot.'
     }
+  })
+  
+  output$boundary_info <- renderPrint({
+    cat("Decision Boundary Parameters:\n")
+    cat("Slope: ", decision_boundary_parameters$slope, "\n")
+    cat("Intercept: ", decision_boundary_parameters$intercept, '\n')
   })
 }
 

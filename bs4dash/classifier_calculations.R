@@ -16,8 +16,8 @@ generateData <- function(group1_params, group2_params) {
                    empirical = FALSE)
   
   # Combine the data with group assignments
-  group1 <- data.frame(Variable1 = data1[, 1], Variable2 = data1[, 2], Group = "Group 1")
-  group2 <- data.frame(Variable1 = data2[, 1], Variable2 = data2[, 2], Group = "Group 2")
+  group1 <- data.frame(Variable1 = data1[, 1], Variable2 = data1[, 2], Group = as.factor("Group1"))
+  group2 <- data.frame(Variable1 = data2[, 1], Variable2 = data2[, 2], Group = as.factor("Group2"))
   
   return(rbind(group1, group2))
 }
