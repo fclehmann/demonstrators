@@ -1,66 +1,97 @@
 library(shiny)
 
+# Zeichenlogik: 
+# einheitlich: 2 klicks begrenzen die Zeichenaktivität
+# abweichung: 
+#   - gespeicherte koordinaten
+#   - gezeichnetes Objekt (Punkte vs. Linie)
+
+# Load the dataset
+data(mtcars)
+
+
 ui <- fluidPage(
-  h4("Click on plot to start drawing, click again to pause"),
-  sliderInput("mywidth", "width of the pencil", min=1, max=30, step=1, value=10),
-  sliderInput("degree", "Degree of polynomial:", min = 1, max = 100, value = 50),
-  actionButton("reset", "reset"),
+  h4("Click on plot to start draw_freehanding, click again to pause"),
+  actionButton(inputId = "reset", label = "Reset"),
+  radioButtons(inputId = "drawType", 
+               label = "Drawing Mode:",
+               choices = list("Draw Line" = "line", "Draw Freehand" = "freehand"),
+               selected = "line"),
+  checkboxInput(inputId = "use_rbaseplot", label = "Use R baseplot", value = FALSE),
   fluidRow(
     column(width = 6, plotOutput("plot", width = "100%", height = "500px",
-                                 hover=hoverOpts(id = "hover", delay = 50, delayType = "throttle", clip = TRUE, nullOutside = TRUE),
-                                 click="click")),
-    column(width = 6, plotOutput("spline_plot", width = "100%", height = "500px"))
+                                 hover=hoverOpts(id = "plot_hover", delay = 180, delayType = "throttle", clip = TRUE, nullOutside = TRUE),
+                                 click="plot_click"))
   )
 )
 
 server <- function(input, output, session) {
-  vals <- reactiveValues(x=NULL, y=NULL)
+  
+  # TODO drawing_finished <- reactiveVal(FALSE)
+  
+  coords <- reactiveValues(x=NULL, y=NULL)
+  # draw() simply controls whether to collect hover coordinates or not
   draw <- reactiveVal(FALSE)
   
-  observeEvent(input$click, handlerExpr = {
-    temp <- draw()
-    draw(!temp)
-    
-    if (!draw()) {
-      vals$x <- c(vals$x, NA)
-      vals$y <- c(vals$y, NA)
-    }
+  observeEvent(input$plot_click, handlerExpr = {
+    # hint: Click coordinates are needed in both drawing modes. Thus, logic is the same.
+    coords$x <- c(coords$x, input$plot_click$x)
+    coords$y <- c(coords$y, input$plot_click$y)
+    draw(!draw())
+    print(paste(draw(), input$drawType))
   })
   
-  observeEvent(input$reset, handlerExpr = {
-    vals$x <- NULL
-    vals$y <- NULL
-    output$spline_plot <- renderPlot({}) # Reset spline plot
+  observeEvent(c(input$drawType, input$reset), handlerExpr = {
+    coords$x <- NULL
+    coords$y <- NULL
+    draw(FALSE)
   })
   
-  observeEvent(input$hover, {
-    if (draw()) {
-      x <- input$hover$x
-      y <- input$hover$y
+  observeEvent(input$plot_hover, {
+    if (draw()==TRUE){
+      x <- input$plot_hover$x
+      y <- input$plot_hover$y
       
-      if (is.null(vals$x) || x > tail(vals$x, 1)) {
-        vals$x <- c(vals$x, x)
-        vals$y <- c(vals$y, y)
+      switch(EXPR = input$drawType,
+      freehand = {
+        # prevent user from drawing backwards
+        # TODO: identify drawing direction
+        if (is.null(coords$x) || x > tail(coords$x, 1)) {
+          coords$x <- c(coords$x, x)
+          coords$y <- c(coords$y, y)
+        }  
+      }, 
+      line = {
+        coords$x[2] <- x
+        coords$y[2] <- y
+        #print(paste(input$drawType, coords$x, coords$y))
       }
+      )
     }
   })
   
   output$plot <- renderPlot({
-    plot(x=vals$x, y=vals$y, xlim=c(0, 28), ylim=c(0, 28), ylab="y", xlab="x", type="l", lwd=input$mywidth)
-  })
-  
-  output$spline_plot <- renderPlot({
-    if (!is.null(vals$x) && !is.null(vals$y)) {
-      # Remove NA values
-      x <- vals$x[!is.na(vals$x)]
-      y <- vals$y[!is.na(vals$y)]
+    if (input$use_rbaseplot) {
+      # Draw the initial plot
+      plot(mtcars$hp, mtcars$mpg, xlab = "Horsepower", ylab = "Miles per Gallon", lwd=2)
       
-      # Fit polynomial spline
-      spline_fit <- smooth.spline(x, y, df = input$degree)
+      if (!is.null(coords$x)) {
+        lines(x=coords$x, y=coords$y, lwd=2)  
+      }
+    } else {
+      # Create ggplot object
+      p <- ggplot(data = mtcars, aes(x = hp, y = mpg)) +
+        geom_point() +
+        labs(x = "Horsepower", y = "Miles per Gallon") +
+        theme_bw()
       
-      # Plot spline
-      plot(x, y, type = "l", xlim = c(0, 28), ylim = c(0, 28), xlab = "x", ylab = "y")
-      lines(spline_fit, col = "red")
+      # Add lines based on the drawing mode
+      if (!is.null(coords$x)) {
+        p <- p + geom_line(data = data.frame(x = coords$x, y = coords$y), aes(x = x, y = y), size = 2)
+      }
+      
+      # Print the plot
+      p
     }
   })
 }
