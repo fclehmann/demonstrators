@@ -1,6 +1,7 @@
 library(shiny)
 library(bs4Dash)
 library(dplyr)
+library(tidyr)
 library(magrittr)
 library(ggplot2)
 library(caret)
@@ -187,7 +188,6 @@ server <- function(input, output, session) {
   
   ###################### classification stuff ##############################
   
-  ######### old stuff  ########
   AboveData <- reactive({
     abovetmp <- NULL
     if (drawing_finished()){
@@ -197,9 +197,11 @@ server <- function(input, output, session) {
                abovetmp <- is_above_freehandline(x = coords$x, y = coords$y, compare_data = data())
              },
              line = {
+               #coords_tmp <- coords()
+               print(coords)
                linear_params <- calculate_linear_boundary(input_coordinates = coords)
-               info(logger, linear_params)
-               abovetmp <- is_above_linear(intercept = linear_params$intercept, slope = linear_params$slope, compare_data = data())
+               info(logger, paste('linear params: ', linear_params))
+               abovetmp <- is_above_linear(params = linear_params, compare_data = data())
                info(logger, length(abovetmp))
              }
       )
@@ -221,19 +223,19 @@ server <- function(input, output, session) {
   output$classificationTable <- renderTable({
     req(AboveData())
     # Calculate confusion matrix 
-    #print(AboveData())
-    #tmp <- calculate_classification_results(referenceData = data()$Group, aboveData = AboveData())
-    # summary_table <- classification_results() %>%
-    #   group_by(Group, classification) %>%
-    #   summarise(Count = n()) %>%
-    #   ungroup() %>%
-    #   pivot_wider(names_from = classification, values_from = Count, values_fill = 0)
-    # 
-    # # Modify column names
-    # colnames(summary_table) <- c('true group', paste0("pred_", unique(classification_results()$classification)))
-    
-    # return(summary_table)
-    return(NULL)
+    print(AboveData())
+    tmp <- calculate_classification_results(referenceData = data()$Group, aboveData = AboveData())
+    summary_table <- tmp %>%
+      group_by(Group, classification) %>%
+      summarise(Count = n()) %>%
+      ungroup() %>%
+      pivot_wider(names_from = classification, values_from = Count, values_fill = 0)
+
+    # Modify column names
+    colnames(summary_table) <- c('true group', paste0("pred_", unique(tmp$classification)))
+
+    return(summary_table)
+    #return(NULL)
   })
   
   

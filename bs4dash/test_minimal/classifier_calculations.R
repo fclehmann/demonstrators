@@ -24,8 +24,7 @@ generateData <- function(group1_params, group2_params) {
 
 # Function to calculate decision boundary parameters from two points
 calculate_linear_boundary <- function(input_coordinates) {
-  info(logger, paste('entering calculate_linear_boundary, input vector length: ', length(input_coordinates$x)))
-  info(logger, paste('vector x: ', input_coordinates$x, '   ', 'vector y: ', input_coordinates$y))
+  #print(paste(input_coordinates$x, input_coordinates$y))
   # Ensure there are two clicked points
   if (length(input_coordinates$x) != 2) {
     return(NULL)
@@ -45,10 +44,9 @@ calculate_linear_boundary <- function(input_coordinates) {
   return(list(slope = slope, intercept = intercept))
 }
 
-is_above_linear <- function(intercept, slope, compare_data){
-  info(logger, 'entering is_above_linear...')
-  info(logger, paste('linear params: ', intercept, slope))
-  y_predicted <- intercept + slope*compare_data$Variable1
+is_above_linear <- function(params, compare_data){
+  print(paste('linear params: ', params$intercept, params$slope))
+  y_predicted <- params$intercept + params$slope*compare_data$Variable1
   above <- ifelse(compare_data$Variable2 > y_predicted, TRUE, FALSE)
   return(above)
 }
@@ -76,17 +74,18 @@ calculate_classification_results <- function(referenceData, aboveData){
     tmp_df$classification_group1_below,
     positive = "Group1"
   )
-  print(tmp_below$byClass[7])
-  print(tmp_above$byClass[7])
+  
   # Calculate F1 score for classification_group1_above
   tmp_above <- confusionMatrix(
     tmp_df$Group,
     tmp_df$classification_group1_above,
     positive = "Group1"
   )
-
+  
+  print(tmp_below$byClass['F1'])
+  print(tmp_above$byClass['F1'])
   # Check for perfect separation
-  perfect_separation <- is.nan(tmp_below$byClass[7]) || is.nan(tmp_above$byClass[7])
+  perfect_separation <- is.nan(tmp_below$byClass['F1']) || is.nan(tmp_above$byClass['F1'])
   print(colnames(tmp_df))
   # Determine which classification to choose based on F1 scores
   if (perfect_separation) {
@@ -94,22 +93,22 @@ calculate_classification_results <- function(referenceData, aboveData){
     # For example, choose the classification with the most observations
     if (sum(tmp_df$Group == "Group1") > sum(tmp_df$Group == "Group2")) {
       tmp_df %<>%
-        select(-classification_group1_above) %>%
+        dplyr::select(-classification_group1_above) %>%
         rename(classification = classification_group1_below)
     } else {
       tmp_df %<>%
-        select(-classification_group1_below) %>%
+        dplyr::select(-classification_group1_below) %>%
         rename(classification = classification_group1_above)
     }
   } else {
     # Regular case: choose based on F1 scores
-    if (tmp_below$byClass[7] >= tmp_above$byClass[7]) {
+    if (tmp_below$byClass['F1'] >= tmp_above$byClass['F1']) {
       tmp_df %<>%
-        select(-classification_group1_above) %>%
+        dplyr::select(-classification_group1_above) %>%
         rename(classification = classification_group1_below)
     } else {
       tmp_df %<>%
-        select(-classification_group1_below) %>%
+        dplyr::select(-classification_group1_below) %>%
         rename(classification = classification_group1_above)
     }
   }
