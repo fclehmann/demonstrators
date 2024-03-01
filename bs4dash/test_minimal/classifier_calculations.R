@@ -1,6 +1,9 @@
 # classifier_calculations.R
 
-generateData <- function(group1_params, group2_params) {
+generateData <- function(seed, group1_params, group2_params) {
+  
+  set.seed(seed)
+  
   # Generate bivariate normal data for Group 1
   data1 <- mvrnorm(n = group1_params$n,
                    mu = c(group1_params$mean1, group1_params$mean2),

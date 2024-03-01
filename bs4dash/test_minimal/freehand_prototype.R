@@ -76,8 +76,8 @@ ui = {
         width = 12,
         fluidRow(
           column(width = 2, "There are given two groups of people where something was observed. Please try to seperate these two groups as good as possible by drawing a straight line into the scatterplot.",),
-          column(width = 2, 
-                 align = "center", 
+          column(width = 1.5, 
+                 align = "left", 
                  radioButtons(inputId = "drawType", 
                               label = "Drawing Mode:",
                               choices = list("Draw Line" = "line", "Draw Freehand" = "freehand"),
@@ -85,9 +85,15 @@ ui = {
                  br(),
                  actionButton(inputId = "reset", label = "Reset")
           ),
-          column(width = 2, align = "right", tableOutput("AboveTable")), 
-          column(width = 3, align = "center", verbatimTextOutput("classificationRule")),
-          column(width = 3, align = "center", tableOutput("classificationTable"))
+          column(width = 2, align = "center", tableOutput("AboveTable")), 
+          column(width = 4, align = "center", tableOutput("classificationTable")), 
+          column(width = 2, 
+                 align = "left",
+                 conditionalPanel(
+                   condition = "output.classificationTableExists",
+                   numericInput(inputId = "seed", label = "Dataset", value = 1)
+                 )
+          )
         )
     ),
     box(
@@ -106,6 +112,7 @@ ui = {
       title = 'Debugging area',
       width = 12,
       verbatimTextOutput('debugging'),
+      tableOutput("DataTable"),
       collapsed = TRUE
     )
   )
@@ -117,6 +124,9 @@ server <- function(input, output, session) {
   
   ######## Data related stuff #############
   DataParams <- reactive({
+    
+    seed <- as.numeric(input$seed)
+    
     group1_params <- list(
       n1 = input$n1,
       mean1 = input$mean1_1,
@@ -133,11 +143,15 @@ server <- function(input, output, session) {
       sd2 = if(input$equal_sd_2) input$sd1_2 else input$sd2_2,
       cor = input$cor_2)
     
-    list(group1_params = group1_params, group2_params = group2_params)
+    list(seed = seed, group1_params = group1_params, group2_params = group2_params)
   })
   
   data <- reactive({
-    generateData(DataParams()$group1_params, DataParams()$group2_params)
+    generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
+  })
+  
+  output$DataTable <- renderTable({
+    data()
   })
    
   ################ drawing logic ############################
@@ -233,11 +247,21 @@ server <- function(input, output, session) {
 
     # Modify column names
     colnames(summary_table) <- c('true group', paste0("pred_", unique(tmp$classification)))
-
     return(summary_table)
-    #return(NULL)
   })
   
+  # this is needed for the conditional display of the button for generating new data
+  # note that drawing_finished is used as indication that the classification table exists although is might not be the best way
+  output$classificationTableExists <- reactive({
+    if (!is.null(drawing_finished())){
+      drawing_finished()
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # making the reactive output$classificationTableExists accessible outside the server function as e.g. ui condition
+  outputOptions(output, "classificationTableExists", suspendWhenHidden = FALSE)
   
   ###################### plotting stuff ####################################
   base_plot <- reactive({
@@ -280,7 +304,6 @@ server <- function(input, output, session) {
     coords$y <- NULL
     draw(FALSE)
     drawing_finished(FALSE)
-    
     # hint: use the <<- operator to assign NULL to the reactive expression outside its definition
     #AboveData <<- NULL
   })
