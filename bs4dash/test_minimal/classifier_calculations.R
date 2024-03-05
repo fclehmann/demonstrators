@@ -1,6 +1,9 @@
 # classifier_calculations.R
 
 generateData <- function(seed, group1_params, group2_params) {
+  print(seed)
+  print(group1_params)
+  print(group2_params)
   
   set.seed(seed)
   
