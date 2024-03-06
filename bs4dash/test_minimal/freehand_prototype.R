@@ -282,7 +282,8 @@ server <- function(input, output, session) {
       pivot_wider(names_from = classification, values_from = Count, values_fill = 0)
 
     # Modify column names
-    colnames(summary_table) <- c('tatsächliche Gruppe', paste0("klassifiziert_als_", unique(tmp$classification)))
+    colnames(summary_table) <- c('tatsächliche Gruppe', 
+                                 paste0("klassifiziert_als_", sort(unique(tmp$classification), decreasing = FALSE)))
     return(summary_table)
   })
   
