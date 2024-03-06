@@ -8,19 +8,29 @@ library(caret)
 library(MASS)
 library(log4r)
 
+# general hint: remember to call and assign reactive values myvar <- reactiveVal(NULL) using parantheses () by myvar()
+# this is not the case for reactiveValues()
+
+# reflecting real data of anthropometric data (estimated on approx. 6000 observations (2000 female, 4000 male)): 
+# Gender mean_ft mean_kg sd_ft sd_kg  corr
+# Female    24.6    67.8  1.24  11.0 0.536
+# Male      27.1    85.5  1.31  14.2 0.484
+
+
 # Define logger configuration
 logger <- logger()
 
 source('classifier_calculations.R')
 source('drawing_functions.R')
+source('predefined_settings.R')
 
 ############ ui stuff ######################
 ui = { 
   dashboardPage(
-  title = "Classifier Demo",
+  title = "Klassifikator Demo",
   header = dashboardHeader(
     title = dashboardBrand(
-      title = "Data Settings",
+      title = "Klassifikator",
       color = "primary",
       href = "https://scads.ai/",
       image = "https://scads.ai/wp-content/themes/scads/assets/images/scads_logo.svg"
@@ -29,64 +39,67 @@ ui = {
   sidebar = dashboardSidebar(
     minified = FALSE,
     # data area
-    tabsetPanel(
-      tabPanel(title = "Group 1", 
-               sliderInput("n1", "Number of Observations:", value = 5, min = 10, max = 200, step = 5),
-               fluidRow(
-                 column(6, checkboxInput("equal_mean_1", label = "Equalize Mean", value = TRUE)),
-                 column(6, checkboxInput("equal_sd_1", label = "Equalize SD", value = TRUE))
-               ),
-               sliderInput("mean1_1", "Mean of Variable 1:", value = -2, min = -10, max = 10),
-               conditionalPanel(
-                 condition = "input.equal_mean_1 == false",
-                 sliderInput("mean2_1", "Mean of Variable 2:", value = -2, min = -10, max = 10)
-               ),
-               sliderInput("sd1_1", "Standard Deviation of Variable 1:", value = 1, min = 0.1, max = 5, step = 0.1),
-               conditionalPanel(
-                 condition = "input.equal_sd_1 == false",
-                 sliderInput("sd2_1", "Standard Deviation of Variable 2:", value = 1, min = 0.1, max = 5, step = 0.1)
-               ),
-               sliderInput("cor_1", "Correlation coefficient:", min = -1, max = 1, value = 0, step = 0.1)
-      ),
-      tabPanel(title = "Group 2",
-               sliderInput("n2", "Number of Observations:", value = 5, min = 10, max = 200, step = 5),
-               fluidRow(
-                 column(6, checkboxInput("equal_mean_2", label = "Equalize Mean", value = TRUE)),
-                 column(6, checkboxInput("equal_sd_2", label = "Equalize SD", value = TRUE))
-               ),
-               sliderInput("mean1_2", "Mean of Variable 1:", value = 0, min = -10, max = 10),
-               conditionalPanel(
-                 condition = "input.equal_mean_2 == false",
-                 sliderInput("mean2_2", "Mean of Variable 2:", value = 0, min = -10, max = 10)
-               ),
-               sliderInput("sd1_2", "Standard Deviation of Variable 1:", value = 1, min = 0.1, max = 5, step = 0.1),
-               conditionalPanel(
-                 condition = "input.equal_sd_2 == false",
-                 sliderInput("sd2_2", "Standard Deviation of Variable 2:", value = 1, min = 0.1, max = 5, step = 0.1)
-               ),
-               sliderInput("cor_2", "Correlation coefficient:", min = -1, max = 1, value = 0, step = 0.1)
-      )
-    ), 
+    # tabsetPanel(
+    #   tabPanel(title = "Group 1",
+    #            sliderInput("n1", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
+    #            fluidRow(
+    #              column(6, checkboxInput("equal_mean_1", label = "Equalize Mean", value = FALSE)),
+    #              column(6, checkboxInput("equal_sd_1", label = "Equalize SD", value = FALSE))
+    #            ),
+    #            sliderInput("mean1_1", "Mean of Variable 1:", value = 15, min = 10, max = 40),
+    #            conditionalPanel(
+    #              condition = "input.equal_mean_1 == false",
+    #              sliderInput("mean2_1", "Mean of Variable 2:", value = 40, min = 5, max = 200)
+    #            ),
+    #            sliderInput("sd1_1", "Standard Deviation of Variable 1:", value = 1.5, min = 1, max = 20, step = 0.1),
+    #            conditionalPanel(
+    #              condition = "input.equal_sd_1 == false",
+    #              sliderInput("sd2_1", "Standard Deviation of Variable 2:", value = 8, min = 1, max = 20, step = 0.1),
+    #            ),
+    #            sliderInput("cor_1", "Correlation coefficient:", min = -1, max = 1, value = 0.5, step = 0.1)
+    #   ),
+    #   tabPanel(title = "Group 2",
+    #            sliderInput("n2", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
+    #            fluidRow(
+    #              column(6, checkboxInput("equal_mean_2", label = "Equalize Mean", value = FALSE)),
+    #              column(6, checkboxInput("equal_sd_2", label = "Equalize SD", value = FALSE))
+    #            ),
+    #            sliderInput("mean1_2", "Mean of Variable 1:", value = 25, min = 10, max = 40),
+    #            conditionalPanel(
+    #              condition = "input.equal_mean_2 == false",
+    #              sliderInput("mean2_2", "Mean of Variable 2:", value = 80, min = 5, max = 200)
+    #            ),
+    #            sliderInput("sd1_2", "Standard Deviation of Variable 1:", value = 1.5, min = 1, max = 20, step = 0.1),
+    #            conditionalPanel(
+    #              condition = "input.equal_sd_2 == false",
+    #              sliderInput("sd2_2", "Standard Deviation of Variable 2:", value = 9, min = 1, max = 20, step = 0.1),
+    #            ),
+    #            sliderInput("cor_2", "Correlation coefficient:", min = -1, max = 1, value = 0.5, step = 0.1)
+    #   )
+    # ), 
+    radioButtons("predefinedsettings", "Konfiguration wählen",
+                 choices = names(predefined_settings),
+                 selected = NULL),
     br(),
-    checkboxInput(inputId = "use_rbaseplot", label = "Use R baseplot", value = TRUE)
+    div(style = "height: 400px;"),
+    checkboxInput(inputId = "use_rbaseplot", label = "Use R baseplot", value = FALSE)
   ),
   # core content 
   body = dashboardBody(
-    box(title = 'Task description',
+    box(title = 'Übersicht und Auswertung',
         width = 12,
         fluidRow(
-          column(width = 2, "There are given two groups of people where something was observed. Please try to seperate these two groups as good as possible by drawing a straight line into the scatterplot.",),
-          column(width = 1.5, 
-                 align = "left", 
+          #column(width = 2, "There are given two groups of people where something was observed. Please try to seperate these two groups as good as possible by drawing a straight line into the scatterplot.",),
+          column(width = 2, 
+                 align = "center", 
                  radioButtons(inputId = "drawType", 
                               label = "Drawing Mode:",
-                              choices = list("Draw Line" = "line", "Draw Freehand" = "freehand"),
-                              selected = "line"), 
-                 br(),
-                 actionButton(inputId = "reset", label = "Reset")
+                              choices = list("gerade Linie" = "line", "Freihandlinie" = "freehand"),
+                              selected = "line")
           ),
+          column(width = 1, align = "center", actionButton(inputId = "reset", label = "Reset")),
           column(width = 2, align = "center", tableOutput("AboveTable")), 
-          column(width = 4, align = "center", tableOutput("classificationTable")), 
+          column(width = 5, align = "center", tableOutput("classificationTable")), 
           column(width = 2, 
                  align = "left",
                  conditionalPanel(
@@ -124,27 +137,50 @@ server <- function(input, output, session) {
   
   ######## Data related stuff #############
   DataParams <- reactive({
-    
+
     seed <- as.numeric(input$seed)
-    
+
     group1_params <- list(
-      n1 = input$n1,
-      mean1 = input$mean1_1,
-      mean2 = if(input$equal_mean_1) input$mean1_1 else input$mean2_1,
-      sd1 = input$sd1_1,
-      sd2 = if(input$equal_sd_1) input$sd1_1 else input$sd2_1,
-      cor = input$cor_1)
-    
+      n1 = predefined_settings[[input$predefinedsettings]]$n1,
+      mean1 = predefined_settings[[input$predefinedsettings]]$mean1_1,
+      mean2 = predefined_settings[[input$predefinedsettings]]$mean2_1,
+      sd1 = predefined_settings[[input$predefinedsettings]]$sd1_1,
+      sd2 = predefined_settings[[input$predefinedsettings]]$sd2_1,
+      cor = predefined_settings[[input$predefinedsettings]]$cor_1)
+
     group2_params <- list(
-      n = input$n2,
-      mean1 = input$mean1_2,
-      mean2 = if(input$equal_mean_2) input$mean1_2 else input$mean2_2,
-      sd1 = input$sd1_2,
-      sd2 = if(input$equal_sd_2) input$sd1_2 else input$sd2_2,
-      cor = input$cor_2)
-    
+      n = predefined_settings[[input$predefinedsettings]]$n2,
+      mean1 = predefined_settings[[input$predefinedsettings]]$mean1_2,
+      mean2 = predefined_settings[[input$predefinedsettings]]$mean2_2,
+      sd1 = predefined_settings[[input$predefinedsettings]]$sd1_2,
+      sd2 = predefined_settings[[input$predefinedsettings]]$sd2_2,
+      cor = predefined_settings[[input$predefinedsettings]]$cor_2)
+
     list(seed = seed, group1_params = group1_params, group2_params = group2_params)
   })
+  
+  # DataParams <- reactive({
+  # 
+  #   seed <- as.numeric(input$seed)
+  # 
+  #   group1_params <- list(
+  #     n1 = input$n1,
+  #     mean1 = input$mean1_1,
+  #     mean2 = if(input$equal_mean_1) input$mean1_1 else input$mean2_1,
+  #     sd1 = input$sd1_1,
+  #     sd2 = if(input$equal_sd_1) input$sd1_1 else input$sd2_1,
+  #     cor = input$cor_1)
+  # 
+  #   group2_params <- list(
+  #     n = input$n2,
+  #     mean1 = input$mean1_2,
+  #     mean2 = if(input$equal_mean_2) input$mean1_2 else input$mean2_2,
+  #     sd1 = input$sd1_2,
+  #     sd2 = if(input$equal_sd_2) input$sd1_2 else input$sd2_2,
+  #     cor = input$cor_2)
+  # 
+  #   list(seed = seed, group1_params = group1_params, group2_params = group2_params)
+  # })
   
   data <- reactive({
     generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
@@ -246,7 +282,8 @@ server <- function(input, output, session) {
       pivot_wider(names_from = classification, values_from = Count, values_fill = 0)
 
     # Modify column names
-    colnames(summary_table) <- c('true group', paste0("pred_", unique(tmp$classification)))
+    colnames(summary_table) <- c('tatsächliche Gruppe', 
+                                 paste0("klassifiziert_als_", sort(unique(tmp$classification), decreasing = FALSE)))
     return(summary_table)
   })
   
@@ -268,7 +305,7 @@ server <- function(input, output, session) {
     # hint: rbase plot does not allow for working layerwise as in ggplot, thus only for ggplot the base_plot is created
     if (!input$use_rbaseplot) {
       info(logger, 'creating base plot for ggplot...')
-      return(plotScatter_ggplot(inputdata = data(), xlab = "footlength cm", ylab = "weight kg"))
+      return(plotScatter_ggplot(inputdata = data(), xlab = "Fußlänge in cm", ylab = "Gewicht in kg"))
     }
   })
   
@@ -282,7 +319,7 @@ server <- function(input, output, session) {
     # info(logger, test)
     if (input$use_rbaseplot) {
       # Draw the initial plot
-      plotScatter_rbase(inputdata = data(), xlab = "footlength cm", ylab = "weight kg")
+      plotScatter_rbase(inputdata = data(), xlab = "Fußlänge in cm", ylab = "Gewicht in kg")
       if (!is.null(coords$x)) {
         lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = plotboundary_color)
       }
@@ -311,3 +348,28 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
+
+##### old DataParams() reactive ##############
+# DataParams <- reactive({
+#   
+#   seed <- as.numeric(input$seed)
+#   
+#   group1_params <- list(
+#     n1 = input$n1,
+#     mean1 = input$mean1_1,
+#     mean2 = if(input$equal_mean_1) input$mean1_1 else input$mean2_1,
+#     sd1 = input$sd1_1,
+#     sd2 = if(input$equal_sd_1) input$sd1_1 else input$sd2_1,
+#     cor = input$cor_1)
+#   
+#   group2_params <- list(
+#     n = input$n2,
+#     mean1 = input$mean1_2,
+#     mean2 = if(input$equal_mean_2) input$mean1_2 else input$mean2_2,
+#     sd1 = input$sd1_2,
+#     sd2 = if(input$equal_sd_2) input$sd1_2 else input$sd2_2,
+#     cor = input$cor_2)
+#   
+#   list(seed = seed, group1_params = group1_params, group2_params = group2_params)
+# })
