@@ -83,7 +83,7 @@ ui = {
                  selected = NULL),
     br(),
     div(style = "height: 400px;"),
-    checkboxInput(inputId = "use_rbaseplot", label = "Use R baseplot", value = FALSE)
+    checkboxInput(inputId = "use_rbaseplot", label = "Grafik beschleunigen", value = FALSE)
   ),
   # core content 
   body = dashboardBody(
