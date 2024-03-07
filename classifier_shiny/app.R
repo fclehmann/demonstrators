@@ -93,7 +93,7 @@ ui = {
           column(width = 2, 
                  align = "left", 
                  radioButtons(inputId = "drawType", 
-                              label = "Drawing Mode:",
+                              label = "Zeichenmodus",
                               choices = list("gerade Linie" = "line", "Freihandlinie" = "freehand"),
                               selected = "line"), 
                  div(style = "height: -10px;"),
@@ -246,12 +246,18 @@ server <- function(input, output, session) {
   output$instructionsText <- renderText({
     text <- 'NULL'
     if (!draw() && !drawing_finished()) {
-      text <- 'Mausklick in Grafikbereich, um Startpunkt der Linie zu setzen.'
+      text <- switch (EXPR = input$drawType,
+                      freehand = 'Freihandlinie von links beginnend zeichnen. Mausklick in Grafikbereich, um Startpunkt der Linie zu setzen.',
+                      line = 'Mausklick in Grafikbereich, um Startpunkt der Linie zu setzen.'
+      )
     } else {
       if (draw() && !drawing_finished()) {
-        text <- 'Mausklick in Grafikbereich, um Endpunkt der Linie zu setzen.'
+        text <- switch (EXPR = input$drawType,
+                freehand = 'Mauszeiger entlang des Pfades der gewünschten Freihandlinie bewegen und anschließend klicken, um Endpunkt der Linie zu setzen.',
+                line = 'Mauszeiger zum Ende der gewünschten Linie bewegen und anschließend klicken, um Endpunkt der Linie zu setzen.'
+        )
       } else {
-        text <- 'Jetzt kann die Klassifikationsgrenze auf verschiedene Datensätze angewendet werden. Für neu zeichnen Button "Reset line" drücken.'
+        text <- 'Jetzt kann die Klassifikationsgrenze auf verschiedene Datensätze angewendet werden. Für neu zeichnen Button "Reset line" drücken oder anderen Zeichenmodus wählen.'
       }
     }
     HTML(text)
