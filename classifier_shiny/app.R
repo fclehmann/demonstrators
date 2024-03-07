@@ -1,5 +1,6 @@
 library(shiny)
 library(bs4Dash)
+library(DT)
 library(dplyr)
 library(tidyr)
 library(magrittr)
@@ -89,22 +90,26 @@ ui = {
     box(title = 'Übersicht und Auswertung',
         width = 12,
         fluidRow(
-          #column(width = 2, "There are given two groups of people where something was observed. Please try to seperate these two groups as good as possible by drawing a straight line into the scatterplot.",),
           column(width = 2, 
-                 align = "center", 
+                 align = "left", 
                  radioButtons(inputId = "drawType", 
                               label = "Drawing Mode:",
                               choices = list("gerade Linie" = "line", "Freihandlinie" = "freehand"),
-                              selected = "line")
+                              selected = "line"), 
+                 div(style = "height: -10px;"),
+                 actionButton(inputId = "reset", label = "Reset line")
           ),
-          column(width = 1, align = "center", actionButton(inputId = "reset", label = "Reset")),
-          column(width = 2, align = "center", tableOutput("AboveTable")), 
+          column(width = 2, align = 'left', textOutput("instructionsText")),
+          #column(width = 2, align = 'left', style = "white-space: normal;", verbatimTextOutput("instructionsText")),
           column(width = 5, align = "center", tableOutput("classificationTable")), 
-          column(width = 2, 
-                 align = "left",
+          column(width = 1, 
+                 align = "center",
                  conditionalPanel(
                    condition = "output.classificationTableExists",
-                   numericInput(inputId = "seed", label = "Dataset", value = 1)
+                   numericInput(inputId = "seed", 
+                                label = "Datensatz Nr.", 
+                                value = 1, min = 1, max = 30000, step = 1, 
+                                width = '100%') # width refers to column width of the layout
                  )
           )
         )
@@ -124,8 +129,11 @@ ui = {
     box(
       title = 'Debugging area',
       width = 12,
-      verbatimTextOutput('debugging'),
-      tableOutput("DataTable"),
+      fluidRow(
+        column(width = 2, align = "left", verbatimTextOutput('debugging')),
+        column(width = 4, align = "left", DTOutput("DataTable")),
+        column(width = 2, align = "center", tableOutput("AboveTable"))
+      ),
       collapsed = TRUE
     )
   )
@@ -186,10 +194,7 @@ server <- function(input, output, session) {
     generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
   })
   
-  output$DataTable <- renderTable({
-    data()
-  })
-   
+  
   ################ drawing logic ############################
   
   # draw() controls whether to collect hover coordinates or not
@@ -236,6 +241,20 @@ server <- function(input, output, session) {
     }
   })
   
+  output$instructionsText <- renderText({
+    text <- 'NULL'
+    if (!draw() && !drawing_finished()) {
+      text <- 'Mausklick in Grafikbereich, um Startpunkt der Linie zu setzen.'
+    } else {
+      if (draw() && !drawing_finished()) {
+        text <- 'Mausklick in Grafikbereich, um Endpunkt der Linie zu setzen.'
+      } else {
+        text <- 'Jetzt kann die Klassifikationsgrenze auf verschiedene Datensätze angewendet werden. Für neu zeichnen Button "Reset line" drücken.'
+      }
+    }
+    HTML(text)
+  })
+  
   ###################### classification stuff ##############################
   
   AboveData <- reactive({
@@ -259,17 +278,6 @@ server <- function(input, output, session) {
     return(abovetmp)
   })
   
-
-  # Render table
-  output$AboveTable <- renderTable({
-    req(AboveData())
-    # Count the occurrences of TRUE and FALSE
-    counts <- table(AboveData())
-    # Convert to data frame for rendering in table
-    counts_df <- data.frame(isAbove = names(counts), Count = as.numeric(counts))
-    return(counts_df)
-  })
-  
   output$classificationTable <- renderTable({
     req(AboveData())
     # Calculate confusion matrix 
@@ -282,10 +290,10 @@ server <- function(input, output, session) {
       pivot_wider(names_from = classification, values_from = Count, values_fill = 0)
 
     # Modify column names
-    colnames(summary_table) <- c('tatsächliche Gruppe', 
-                                 paste0("klassifiziert_als_", sort(unique(tmp$classification), decreasing = FALSE)))
+    colnames(summary_table) <- c('tatsächliche<br>Gruppe', 
+                                 paste0("klassifiziert als <br>", sort(unique(tmp$classification), decreasing = FALSE)))
     return(summary_table)
-  })
+  }, bordered = TRUE, sanitize.text.function=identity) # sanitize text is needed to realize line breaks in html
   
   # this is needed for the conditional display of the button for generating new data
   # note that drawing_finished is used as indication that the classification table exists although is might not be the best way
@@ -344,6 +352,25 @@ server <- function(input, output, session) {
     # hint: use the <<- operator to assign NULL to the reactive expression outside its definition
     #AboveData <<- NULL
   })
+  
+  ################### debugging stuff #####################
+  output$DataTable <- renderDT({
+    # DOM elements: the length menu (l), the search box (f), the table (t), 
+    # the information summary (i), and the pagination control (p), processing indicator (r)
+    # e.g. dom = 'tp' is table and pagination
+    # see docs at https://datatables.net/reference/option/dom
+    datatable(data(), options = list(paging = TRUE, pageLength = 10, dom = 'tp'))
+  })
+  
+  output$AboveTable <- renderTable({
+    req(AboveData())
+    # Count the occurrences of TRUE and FALSE
+    counts <- table(AboveData())
+    # Convert to data frame for rendering in table
+    counts_df <- data.frame(isAbove = names(counts), Count = as.numeric(counts))
+    return(counts_df)
+  })
+  
   
 }
 
