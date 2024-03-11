@@ -111,7 +111,7 @@ ui = {
                    numericInput(inputId = "seed", 
                                 label = "Datensatz Nr.", 
                                 value = 1, min = 1, max = 30000, step = 1, 
-                                width = '30%') # width refers to column width of the layout
+                                width = '40%') # width refers to column width of the layout
                  )
           )
         )
