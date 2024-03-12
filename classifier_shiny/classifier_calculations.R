@@ -74,50 +74,50 @@ calculate_classification_results <- function(referenceData, aboveData){
   tmp_df %<>% mutate(classification_group1_below = as.factor(ifelse(AboveBoundary==FALSE, 'Group1', 'Group2')), 
                      classification_group1_above = as.factor(ifelse(AboveBoundary==TRUE, 'Group1', 'Group2')))
   
-  # Calculate F1 score for classification_group1_below
-  tmp_below <- confusionMatrix(
-    tmp_df$Group,
-    tmp_df$classification_group1_below,
-    positive = "Group1"
-  )
+  # initializing variable for storing the best confusion matrix (and therewith all connected metrics)
+  best_cm <- NULL
   
-  # Calculate F1 score for classification_group1_above
-  tmp_above <- confusionMatrix(
-    tmp_df$Group,
-    tmp_df$classification_group1_above,
-    positive = "Group1"
-  )
+  # Calculate confusion matrix for every case
+  tmp_below <- tryCatch({
+    confusionMatrix(data = tmp_df$classification_group1_below, 
+                    reference = tmp_df$Group, 
+                    positive = "Group1"
+    )
+  }, error = function(e) {
+    NULL  # Return NULL to indicate failure
+  })
   
-  print(tmp_below$byClass['F1'])
-  print(tmp_above$byClass['F1'])
-  # Check for perfect separation
-  perfect_separation <- is.nan(tmp_below$byClass['F1']) || is.nan(tmp_above$byClass['F1'])
-  print(colnames(tmp_df))
-  # Determine which classification to choose based on F1 scores
-  if (perfect_separation) {
-    # Handle perfect separation case
-    # For example, choose the classification with the most observations
-    if (sum(tmp_df$Group == "Group1") > sum(tmp_df$Group == "Group2")) {
-      tmp_df %<>%
-        dplyr::select(-classification_group1_above) %>%
-        rename(classification = classification_group1_below)
+  tmp_above <- tryCatch({
+    confusionMatrix(data = tmp_df$classification_group1_above, 
+                    reference = tmp_df$Group, 
+                    positive = "Group1"
+    )
+  }, error = function(e) {
+    NULL  # Return NULL to indicate failure
+  })
+  
+  if (!is.null(tmp_below) && !is.na(tmp_below$byClass['F1'])) {
+    if (tmp_below$byClass['F1']==1) {
+      # check for perfect separation, directly returning this confusion matrix
+      return(tmp_below)  
     } else {
-      tmp_df %<>%
-        dplyr::select(-classification_group1_below) %>%
-        rename(classification = classification_group1_above)
-    }
-  } else {
-    # Regular case: choose based on F1 scores
-    if (tmp_below$byClass['F1'] >= tmp_above$byClass['F1']) {
-      tmp_df %<>%
-        dplyr::select(-classification_group1_above) %>%
-        rename(classification = classification_group1_below)
-    } else {
-      tmp_df %<>%
-        dplyr::select(-classification_group1_below) %>%
-        rename(classification = classification_group1_above)
+      best_cm <- tmp_below
     }
   }
-  # print(tmp_df)
-  return(tmp_df)
+  
+  if (!is.null(tmp_above) && !is.na(tmp_above$byClass['F1'])) {
+    if (tmp_above$byClass['F1']==1) {
+      # check for perfect separation, directly returning this confusion matrix
+      return(tmp_above)  
+    }
+    if (!is.null(best_cm) && !is.na(best_cm)) {
+      if (tmp_above$byClass['F1'] > best_cm$byClass['F1']) {
+        return(tmp_above)
+      } 
+    } else {
+      best_cm <- tmp_above
+    }
+      
+  } 
+  return(best_cm)
 }

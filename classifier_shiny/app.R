@@ -9,8 +9,14 @@ library(caret)
 library(MASS)
 library(log4r)
 
-# general hint: remember to call and assign reactive values myvar <- reactiveVal(NULL) using parantheses () by myvar()
+# general hints: 
+# 1. remember to call and assign reactive values myvar <- reactiveVal(NULL) using parantheses () by myvar()
 # this is not the case for reactiveValues()
+
+# 2. the req() function in Shiny treats a vector containing all FALSE values as non-existent. 
+# This behavior stems from how req() evaluates its arguments.
+# When you pass a vector of boolean values to req(), it evaluates whether any of the elements in the vector are TRUE. If all elements are FALSE, 
+# req() interprets it as the condition not being met and treats it as non-existent.
 
 # reflecting real data of anthropometric data (estimated on approx. 6000 observations (2000 female, 4000 male)): 
 # Gender mean_ft mean_kg sd_ft sd_kg  corr
@@ -286,21 +292,31 @@ server <- function(input, output, session) {
     return(abovetmp)
   })
   
+  # this boolean is needed for technical reasons, as directly checking AboveData() not working
+  # see hints at top of the file wrt behavior of shiny::req()
+  AboveDataExists <- reactive({
+    ifelse(!is.null(AboveData()), TRUE, FALSE)
+  })
+  
   output$classificationTable <- renderTable({
-    req(AboveData())
+    req(AboveDataExists())
     # Calculate confusion matrix 
     print(AboveData())
     tmp <- calculate_classification_results(referenceData = data()$Group, aboveData = AboveData())
-    summary_table <- tmp %>%
-      group_by(Group, classification) %>%
-      summarise(Count = n()) %>%
-      ungroup() %>%
-      pivot_wider(names_from = classification, values_from = Count, values_fill = 0)
-
+    print(tmp$table)
+    # note that classification metrics are available in the tmp list and are not yet used
+    
+    classification_data <- tmp$table %>% as.data.frame() %>% 
+      # change pivot_wider to transpose the final confusion matrix 
+      # names_from = Reference or names_from Prediction
+      pivot_wider(names_from = Prediction, values_from = Freq, values_fill = 0)
+    # change the column to be sorted according to pivot_wider
+    group_labels <- as.character(sort(unique(classification_data$Reference), decreasing = FALSE))
+  
     # Modify column names
-    colnames(summary_table) <- c('tatsächliche<br>Gruppe', 
-                                 paste0("klassifiziert als <br>", sort(unique(tmp$classification), decreasing = FALSE)))
-    return(summary_table)
+    colnames(classification_data) <- c('tatsächliche<br>Gruppe', 
+                                        paste0("klassifiziert als <br>", group_labels))
+    return(classification_data)
   }, bordered = TRUE, sanitize.text.function=identity) # sanitize text is needed to realize line breaks in html
   
   # this is needed for the conditional display of the button for generating new data
@@ -367,16 +383,21 @@ server <- function(input, output, session) {
     # the information summary (i), and the pagination control (p), processing indicator (r)
     # e.g. dom = 'tp' is table and pagination
     # see docs at https://datatables.net/reference/option/dom
-    datatable(data(), options = list(paging = TRUE, pageLength = 10, dom = 'tp'))
+    if (!is.null(AboveData())) {
+      tmp_data <- cbind(data(), AboveData())
+    } else {
+      tmp_data <- data()
+    }
+    datatable(tmp_data, options = list(paging = TRUE, pageLength = 10, dom = 'tp'))
   })
   
   output$AboveTable <- renderTable({
-    req(AboveData())
+    req(AboveDataExists())
     # Count the occurrences of TRUE and FALSE
     counts <- table(AboveData())
     # Convert to data frame for rendering in table
-    counts_df <- data.frame(isAbove = names(counts), Count = as.numeric(counts))
-    return(counts_df)
+    #counts_df <- data.frame(isAbove = names(counts), Count = as.numeric(counts))
+    return(counts)
   })
   
   
