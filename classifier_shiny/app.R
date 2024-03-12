@@ -18,12 +18,6 @@ library(log4r)
 # When you pass a vector of boolean values to req(), it evaluates whether any of the elements in the vector are TRUE. If all elements are FALSE, 
 # req() interprets it as the condition not being met and treats it as non-existent.
 
-# reflecting real data of anthropometric data (estimated on approx. 6000 observations (2000 female, 4000 male)): 
-# Gender mean_ft mean_kg sd_ft sd_kg  corr
-# Female    24.6    67.8  1.24  11.0 0.536
-# Male      27.1    85.5  1.31  14.2 0.484
-
-
 # Define logger configuration
 logger <- logger()
 
