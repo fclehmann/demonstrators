@@ -40,49 +40,55 @@ ui = {
   sidebar = dashboardSidebar(
     minified = FALSE,
     # data area
-    # tabsetPanel(
-    #   tabPanel(title = "Group 1",
-    #            sliderInput("n1", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
-    #            fluidRow(
-    #              column(6, checkboxInput("equal_mean_1", label = "Equalize Mean", value = FALSE)),
-    #              column(6, checkboxInput("equal_sd_1", label = "Equalize SD", value = FALSE))
-    #            ),
-    #            sliderInput("mean1_1", "Mean of Variable 1:", value = 15, min = 10, max = 40),
-    #            conditionalPanel(
-    #              condition = "input.equal_mean_1 == false",
-    #              sliderInput("mean2_1", "Mean of Variable 2:", value = 40, min = 5, max = 200)
-    #            ),
-    #            sliderInput("sd1_1", "Standard Deviation of Variable 1:", value = 1.5, min = 1, max = 20, step = 0.1),
-    #            conditionalPanel(
-    #              condition = "input.equal_sd_1 == false",
-    #              sliderInput("sd2_1", "Standard Deviation of Variable 2:", value = 8, min = 1, max = 20, step = 0.1),
-    #            ),
-    #            sliderInput("cor_1", "Correlation coefficient:", min = -1, max = 1, value = 0.5, step = 0.1)
-    #   ),
-    #   tabPanel(title = "Group 2",
-    #            sliderInput("n2", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
-    #            fluidRow(
-    #              column(6, checkboxInput("equal_mean_2", label = "Equalize Mean", value = FALSE)),
-    #              column(6, checkboxInput("equal_sd_2", label = "Equalize SD", value = FALSE))
-    #            ),
-    #            sliderInput("mean1_2", "Mean of Variable 1:", value = 25, min = 10, max = 40),
-    #            conditionalPanel(
-    #              condition = "input.equal_mean_2 == false",
-    #              sliderInput("mean2_2", "Mean of Variable 2:", value = 80, min = 5, max = 200)
-    #            ),
-    #            sliderInput("sd1_2", "Standard Deviation of Variable 1:", value = 1.5, min = 1, max = 20, step = 0.1),
-    #            conditionalPanel(
-    #              condition = "input.equal_sd_2 == false",
-    #              sliderInput("sd2_2", "Standard Deviation of Variable 2:", value = 9, min = 1, max = 20, step = 0.1),
-    #            ),
-    #            sliderInput("cor_2", "Correlation coefficient:", min = -1, max = 1, value = 0.5, step = 0.1)
-    #   )
-    # ), 
-    radioButtons("predefinedsettings", "Konfiguration wählen",
-                 choices = names(predefined_settings),
-                 selected = NULL),
+    tabsetPanel(type = 'pills', 
+      tabPanel(title = "Einfacher Modus",
+               radioButtons("predefinedsettings_selector", "Konfiguration wählen",
+                            choices = names(predefined_settings),
+                            selected = names(predefined_settings)[1])
+               ),
+      tabPanel(title = 'Fortgeschritten',
+               tabsetPanel(
+      tabPanel(title = "Group 1",
+               sliderInput("n_1", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
+               fluidRow(
+                 column(6, checkboxInput("equal_mean_1", label = "Equalize Mean", value = FALSE)),
+                 column(6, checkboxInput("equal_sd_1", label = "Equalize SD", value = FALSE))
+               ),
+               sliderInput("mean1_1", "Mean of Variable 1:", value = 15, min = 10, max = 40),
+               conditionalPanel(
+                 condition = "input.equal_mean_1 == false",
+                 sliderInput("mean2_1", "Mean of Variable 2:", value = 40, min = 5, max = 200)
+               ),
+               sliderInput("sd1_1", "Standard Deviation of Variable 1:", value = 1.5, min = 1, max = 20, step = 0.1),
+               conditionalPanel(
+                 condition = "input.equal_sd_1 == false",
+                 sliderInput("sd2_1", "Standard Deviation of Variable 2:", value = 8, min = 1, max = 20, step = 0.1),
+               ),
+               sliderInput("cor_1", "Correlation coefficient:", min = -1, max = 1, value = 0.5, step = 0.1)
+      ),
+      tabPanel(title = "Group 2",
+               sliderInput("n_2", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
+               fluidRow(
+                 column(6, checkboxInput("equal_mean_2", label = "Equalize Mean", value = FALSE)),
+                 column(6, checkboxInput("equal_sd_2", label = "Equalize SD", value = FALSE))
+               ),
+               sliderInput("mean1_2", "Mean of Variable 1:", value = 25, min = 10, max = 40),
+               conditionalPanel(
+                 condition = "input.equal_mean_2 == false",
+                 sliderInput("mean2_2", "Mean of Variable 2:", value = 80, min = 5, max = 200)
+               ),
+               sliderInput("sd1_2", "Standard Deviation of Variable 1:", value = 1.5, min = 1, max = 20, step = 0.1),
+               conditionalPanel(
+                 condition = "input.equal_sd_2 == false",
+                 sliderInput("sd2_2", "Standard Deviation of Variable 2:", value = 9, min = 1, max = 20, step = 0.1),
+               ),
+               sliderInput("cor_2", "Correlation coefficient:", min = -1, max = 1, value = 0.5, step = 0.1)
+      )
+    ),
+               )
+    ),
+    
     br(),
-    div(style = "height: 400px;"),
     checkboxInput(inputId = "use_rbaseplot", label = "Grafik beschleunigen", value = FALSE)
   ),
   # core content 
@@ -146,51 +152,59 @@ ui = {
 server <- function(input, output, session) {
   
   ######## Data related stuff #############
+  # The reactivity of data generation is based on changes of the ui elements that control the data parameters.
+  # Therefore, predefined settings are applied by changing the ui elements values'.
+  # Changing the ui elements directly is possible as well.
+  # The final changes are done in reactive DataParams().
+  
+  # Observe changes in the predefined settings and update the slider values accordingly.
+  observeEvent(input$predefinedsettings_selector, {
+    # When a setting is selected, update UI elements based on predefined_settings
+    selected_setting <- predefined_settings[[input$predefinedsettings_selector]]
+    
+    # identify the case of setting choice induced change
+    
+    if (!is.null(selected_setting)) {
+      # Group 1
+      updateSliderInput(session, "n_1", value = selected_setting$n_1)
+      updateSliderInput(session, "mean1_1", value = selected_setting$mean1_1)
+      updateSliderInput(session, "mean2_1", value = selected_setting$mean2_1)
+      updateSliderInput(session, "sd1_1", value = selected_setting$sd1_1)
+      updateSliderInput(session, "sd2_1", value = selected_setting$sd2_1)
+      updateSliderInput(session, "cor_1", value = selected_setting$cor_1)
+      
+      # Group 2 - assuming similar UI elements are defined for Group 2
+      updateSliderInput(session, "n_2", value = selected_setting$n_2)
+      updateSliderInput(session, "mean1_2", value = selected_setting$mean1_2)
+      updateSliderInput(session, "mean2_2", value = selected_setting$mean2_2)
+      updateSliderInput(session, "sd1_2", value = selected_setting$sd1_2)
+      updateSliderInput(session, "sd2_2", value = selected_setting$sd2_2)
+      updateSliderInput(session, "cor_2", value = selected_setting$cor_2)
+    }
+  })
+  
   DataParams <- reactive({
 
     seed <- as.numeric(input$seed)
 
     group1_params <- list(
-      n1 = predefined_settings[[input$predefinedsettings]]$n1,
-      mean1 = predefined_settings[[input$predefinedsettings]]$mean1_1,
-      mean2 = predefined_settings[[input$predefinedsettings]]$mean2_1,
-      sd1 = predefined_settings[[input$predefinedsettings]]$sd1_1,
-      sd2 = predefined_settings[[input$predefinedsettings]]$sd2_1,
-      cor = predefined_settings[[input$predefinedsettings]]$cor_1)
+      n = input$n_1,
+      mean1 = input$mean1_1,
+      mean2 = if(input$equal_mean_1) input$mean1_1 else input$mean2_1,
+      sd1 = input$sd1_1,
+      sd2 = if(input$equal_sd_1) input$sd1_1 else input$sd2_1,
+      cor = input$cor_1)
 
     group2_params <- list(
-      n = predefined_settings[[input$predefinedsettings]]$n2,
-      mean1 = predefined_settings[[input$predefinedsettings]]$mean1_2,
-      mean2 = predefined_settings[[input$predefinedsettings]]$mean2_2,
-      sd1 = predefined_settings[[input$predefinedsettings]]$sd1_2,
-      sd2 = predefined_settings[[input$predefinedsettings]]$sd2_2,
-      cor = predefined_settings[[input$predefinedsettings]]$cor_2)
+      n = input$n_2,
+      mean1 = input$mean1_2,
+      mean2 = if(input$equal_mean_2) input$mean1_2 else input$mean2_2,
+      sd1 = input$sd1_2,
+      sd2 = if(input$equal_sd_2) input$sd1_2 else input$sd2_2,
+      cor = input$cor_2)
 
     list(seed = seed, group1_params = group1_params, group2_params = group2_params)
   })
-  
-  # DataParams <- reactive({
-  # 
-  #   seed <- as.numeric(input$seed)
-  # 
-  #   group1_params <- list(
-  #     n1 = input$n1,
-  #     mean1 = input$mean1_1,
-  #     mean2 = if(input$equal_mean_1) input$mean1_1 else input$mean2_1,
-  #     sd1 = input$sd1_1,
-  #     sd2 = if(input$equal_sd_1) input$sd1_1 else input$sd2_1,
-  #     cor = input$cor_1)
-  # 
-  #   group2_params <- list(
-  #     n = input$n2,
-  #     mean1 = input$mean1_2,
-  #     mean2 = if(input$equal_mean_2) input$mean1_2 else input$mean2_2,
-  #     sd1 = input$sd1_2,
-  #     sd2 = if(input$equal_sd_2) input$sd1_2 else input$sd2_2,
-  #     cor = input$cor_2)
-  # 
-  #   list(seed = seed, group1_params = group1_params, group2_params = group2_params)
-  # })
   
   data <- reactive({
     generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
@@ -398,28 +412,3 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
-
-
-##### old DataParams() reactive ##############
-# DataParams <- reactive({
-#   
-#   seed <- as.numeric(input$seed)
-#   
-#   group1_params <- list(
-#     n1 = input$n1,
-#     mean1 = input$mean1_1,
-#     mean2 = if(input$equal_mean_1) input$mean1_1 else input$mean2_1,
-#     sd1 = input$sd1_1,
-#     sd2 = if(input$equal_sd_1) input$sd1_1 else input$sd2_1,
-#     cor = input$cor_1)
-#   
-#   group2_params <- list(
-#     n = input$n2,
-#     mean1 = input$mean1_2,
-#     mean2 = if(input$equal_mean_2) input$mean1_2 else input$mean2_2,
-#     sd1 = input$sd1_2,
-#     sd2 = if(input$equal_sd_2) input$sd1_2 else input$sd2_2,
-#     cor = input$cor_2)
-#   
-#   list(seed = seed, group1_params = group1_params, group2_params = group2_params)
-# })
