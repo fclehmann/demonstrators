@@ -12,13 +12,13 @@ predefined_settings <- list(
     seed = 1,
     
     # group 1
-    n1 = 10,
+    n_1 = 10,
     mean1_1 = 15, sd1_1 = 1.2,
     mean2_1 = 40, sd2_1 = 8,
     cor_1 = 0,
     
     # group 2
-    n2 = 10,
+    n_2 = 10,
     mean1_2 = 25, sd1_2 = 1.6,
     mean2_2 = 80, sd2_2 = 8,
     cor_2 = 0
@@ -28,13 +28,13 @@ predefined_settings <- list(
     seed = 1,
     
     # group 1
-    n1 = 100,
+    n_1 = 100,
     mean1_1 = 15, sd1_1 = 1.2,
     mean2_1 = 40, sd2_1 = 8,
     cor_1 = 0,
     
     # group 2
-    n2 = 100,
+    n_2 = 100,
     mean1_2 = 25, sd1_2 = 1.6,
     mean2_2 = 80, sd2_2 = 8,
     cor_2 = 0
@@ -43,13 +43,13 @@ predefined_settings <- list(
     seed = 1,
     
     # group 1
-    n1 = 10,
+    n_1 = 10,
     mean1_1 = 24.6, sd1_1 = 0.84,
     mean2_1 = 67.8, sd2_1 = 11.0,
     cor_1 = 0.536,
     
     # group 2
-    n2 = 10,
+    n_2 = 10,
     mean1_2 = 27.1, sd1_2 = 0.71,
     mean2_2 = 85.5, sd2_2 = 14.2,
     cor_2 = 0.484
@@ -58,13 +58,13 @@ predefined_settings <- list(
     seed = 1,
     
     # group 1
-    n1 = 50,
+    n_1 = 50,
     mean1_1 = 24.6, sd1_1 = 0.74,
     mean2_1 = 67.8, sd2_1 = 11.0,
     cor_1 = 0.536,
     
     # group 2
-    n2 = 50,
+    n_2 = 50,
     mean1_2 = 27.1, sd1_2 = 1.01,
     mean2_2 = 85.5, sd2_2 = 14.2,
     cor_2 = 0.484
