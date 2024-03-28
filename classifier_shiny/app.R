@@ -54,7 +54,7 @@ ui = {
                ),
       tabPanel(title = 'Fortgeschritten',
                tabsetPanel(
-      tabPanel(title = "Group 1",
+      tabPanel(title = "Group A",
                sliderInput("n_1", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
                fluidRow(
                  column(6, checkboxInput("equal_mean_1", label = "Equalize Mean", value = FALSE)),
@@ -72,7 +72,7 @@ ui = {
                ),
                sliderInput("cor_1", "Correlation coefficient:", min = -1, max = 1, value = 0.5, step = 0.1)
       ),
-      tabPanel(title = "Group 2",
+      tabPanel(title = "Group B",
                sliderInput("n_2", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
                fluidRow(
                  column(6, checkboxInput("equal_mean_2", label = "Equalize Mean", value = FALSE)),
@@ -167,8 +167,8 @@ server <- function(input, output, session) {
   
   xlabel_default <- 'Variable 1'
   ylabel_default <- 'Variable 2'
-  group1_label_default = 'Group 1'
-  group2_label_default = 'Group 2'
+  group1_label_default = 'Group A'
+  group2_label_default = 'Group B'
   plot_labels <- reactiveValues(xlabel = xlabel_default, ylabel = ylabel_default, 
                                 group1_label = group1_label_default, group2_label = group2_label_default)
   
@@ -180,7 +180,7 @@ server <- function(input, output, session) {
     # identify the case of setting choice induced change
     
     if (!is.null(selected_setting)) {
-      # Group 1
+      # Group A
       updateSliderInput(session, "n_1", value = selected_setting$n_1)
       updateSliderInput(session, "mean1_1", value = selected_setting$mean1_1)
       updateSliderInput(session, "mean2_1", value = selected_setting$mean2_1)
@@ -188,7 +188,7 @@ server <- function(input, output, session) {
       updateSliderInput(session, "sd2_1", value = selected_setting$sd2_1)
       updateSliderInput(session, "cor_1", value = selected_setting$cor_1)
       
-      # Group 2 - assuming similar UI elements are defined for Group 2
+      # Group B - assuming similar UI elements are defined for Group B
       updateSliderInput(session, "n_2", value = selected_setting$n_2)
       updateSliderInput(session, "mean1_2", value = selected_setting$mean1_2)
       updateSliderInput(session, "mean2_2", value = selected_setting$mean2_2)
