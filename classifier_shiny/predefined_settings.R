@@ -9,6 +9,7 @@
 predefined_settings <- list(
   # e.g. children and adults
   setting_A = list(
+    description = 'Einfachster Fall mit wenigen Beobachtungen, die sich perfekt klassifizieren lassen.',
     seed = 1,
     
     # group 1
@@ -25,6 +26,7 @@ predefined_settings <- list(
   ),
   # e.g. children and adults as A, but increasing n
   setting_B = list(
+    description = 'Einfachster Fall mit vielen Beobachtungen, die sich perfekt klassifizieren lassen.',
     seed = 1,
     
     # group 1
@@ -40,6 +42,7 @@ predefined_settings <- list(
     cor_2 = 0
   ),
   setting_C = list(
+    description = 'Einfacher Fall mit wenigen Beobachtungen, die sich nicht perfekt klassifizieren lassen.',
     seed = 1,
     
     # group 1
@@ -55,6 +58,7 @@ predefined_settings <- list(
     cor_2 = 0.484
   ),
   setting_D = list(
+    description = 'Einfacher Fall mit vielen Beobachtungen, die sich nicht perfekt klassifizieren lassen.',
     seed = 1,
     
     # group 1

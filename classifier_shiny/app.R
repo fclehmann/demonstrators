@@ -8,6 +8,7 @@ library(ggplot2)
 library(caret)
 library(MASS)
 library(log4r)
+library(fresh)
 
 # general hints: 
 # 1. remember to call and assign reactive values myvar <- reactiveVal(NULL) using parantheses () by myvar()
@@ -47,7 +48,9 @@ ui = {
       tabPanel(title = "Einfacher Modus",
                radioButtons("predefinedsettings_selector", "Konfiguration wählen",
                             choices = names(predefined_settings),
-                            selected = names(predefined_settings)[1])
+                            selected = names(predefined_settings)[1]
+                            ), 
+               uiOutput("setting_description")
                ),
       tabPanel(title = 'Fortgeschritten',
                tabsetPanel(
@@ -184,6 +187,11 @@ server <- function(input, output, session) {
       updateSliderInput(session, "sd2_2", value = selected_setting$sd2_2)
       updateSliderInput(session, "cor_2", value = selected_setting$cor_2)
     }
+  })
+  
+  output$setting_description <- renderUI({
+    tmp <- predefined_settings[[input$predefinedsettings_selector]]$description
+    HTML(tmp, collapse = "<br/>")
   })
   
   # validate seed value
