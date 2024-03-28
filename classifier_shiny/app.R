@@ -186,9 +186,29 @@ server <- function(input, output, session) {
     }
   })
   
+  # validate seed value
+  validated_seed <- reactive({
+    req(input$seed)  # Ensure input$seed is not NULL
+    
+    # Check if input$seed is a positive integer
+    if (is.integer(input$seed) && input$seed > 0) {
+      return(input$seed)
+    } else {
+      # If input$seed is not a positive integer, show a warning message
+      showModal(
+        modalDialog(
+          title = "Invalid Input",
+          "Please enter a positive integer for the seed value.",
+          easyClose = TRUE
+        )
+      )
+      return(NULL)
+    }
+  })
+  
   DataParams <- reactive({
-
-    seed <- as.numeric(input$seed)
+    req(validated_seed())
+    seed <- as.numeric(validated_seed())
 
     group1_params <- list(
       n = input$n_1,
