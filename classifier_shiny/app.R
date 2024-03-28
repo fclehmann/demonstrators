@@ -28,14 +28,17 @@ source('predefined_settings.R')
 ############ ui stuff ######################
 ui = { 
   dashboardPage(
-  title = "Klassifikator Demo",
-  header = dashboardHeader(
-    title = dashboardBrand(
-      title = "Klassifikator",
-      color = "primary",
-      href = "https://scads.ai/",
-      image = "https://scads.ai/wp-content/themes/scads/assets/images/scads_logo.svg"
-    )
+    title = "Klassifikator Demo",
+    dark = NULL, # deactivate dark/light theme switch
+    help = NULL, # deactive help switch
+    fullscreen = TRUE, # activate fullscreen switch
+    header = dashboardHeader(
+      title = dashboardBrand(
+        title = "Klassifikator",
+        color = "primary",
+        href = "https://scads.ai/",
+        image = "https://scads.ai/wp-content/themes/scads/assets/images/scads_logo.svg"
+      )
   ),
   sidebar = dashboardSidebar(
     minified = FALSE,
