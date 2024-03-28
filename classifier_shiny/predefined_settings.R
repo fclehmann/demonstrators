@@ -10,6 +10,10 @@ predefined_settings <- list(
   # e.g. children and adults
   setting_A = list(
     description = 'Einfachster Fall mit wenigen Beobachtungen, die sich perfekt klassifizieren lassen.',
+    xlabel = 'Fußlänge in cm',
+    ylabel = 'Gewicht in kg',
+    group1_label = 'Frauen',
+    group2_label = 'Männer',
     seed = 1,
     
     # group 1
@@ -27,6 +31,8 @@ predefined_settings <- list(
   # e.g. children and adults as A, but increasing n
   setting_B = list(
     description = 'Einfachster Fall mit vielen Beobachtungen, die sich perfekt klassifizieren lassen.',
+    xlabel = 'Fußlänge in cm',
+    ylabel = 'Gewicht in kg',
     seed = 1,
     
     # group 1
@@ -43,6 +49,8 @@ predefined_settings <- list(
   ),
   setting_C = list(
     description = 'Einfacher Fall mit wenigen Beobachtungen, die sich nicht perfekt klassifizieren lassen.',
+    xlabel = 'Fußlänge in cm',
+    ylabel = 'Gewicht in kg',
     seed = 1,
     
     # group 1
@@ -59,6 +67,8 @@ predefined_settings <- list(
   ),
   setting_D = list(
     description = 'Einfacher Fall mit vielen Beobachtungen, die sich nicht perfekt klassifizieren lassen.',
+    xlabel = 'Fußlänge in cm',
+    ylabel = 'Gewicht in kg',
     seed = 1,
     
     # group 1

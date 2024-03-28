@@ -163,6 +163,15 @@ server <- function(input, output, session) {
   # Changing the ui elements directly is possible as well.
   # The final changes are done in reactive DataParams().
   
+  # set labels to default values, using the predefined settings can overwrite these
+  
+  xlabel_default <- 'Variable 1'
+  ylabel_default <- 'Variable 2'
+  group1_label_default = 'Group 1'
+  group2_label_default = 'Group 2'
+  plot_labels <- reactiveValues(xlabel = xlabel_default, ylabel = ylabel_default, 
+                                group1_label = group1_label_default, group2_label = group2_label_default)
+  
   # Observe changes in the predefined settings and update the slider values accordingly.
   observeEvent(input$predefinedsettings_selector, {
     # When a setting is selected, update UI elements based on predefined_settings
@@ -186,6 +195,12 @@ server <- function(input, output, session) {
       updateSliderInput(session, "sd1_2", value = selected_setting$sd1_2)
       updateSliderInput(session, "sd2_2", value = selected_setting$sd2_2)
       updateSliderInput(session, "cor_2", value = selected_setting$cor_2)
+      
+      # assign axis and group labels
+      plot_labels$xlabel <- ifelse(!is.null(selected_setting$xlabel), selected_setting$xlabel, xlabel_default)
+      plot_labels$ylabel <- ifelse(!is.null(selected_setting$ylabel), selected_setting$ylabel, ylabel_default)
+      plot_labels$group1_label <- ifelse(!is.null(selected_setting$group1_label), selected_setting$group1_label, group1_label_default)
+      plot_labels$group2_label <- ifelse(!is.null(selected_setting$group2_label), selected_setting$group2_label, group2_label_default)
     }
   })
   
@@ -194,7 +209,7 @@ server <- function(input, output, session) {
     HTML(tmp, collapse = "<br/>")
   })
   
-  # validate seed value
+  # validate seed value because numericInput cannot be locked against manual manipulation
   validated_seed <- reactive({
     req(input$seed)  # Ensure input$seed is not NULL
     
@@ -376,7 +391,8 @@ server <- function(input, output, session) {
     # hint: rbase plot does not allow for working layerwise as in ggplot, thus only for ggplot the base_plot is created
     if (!input$use_rbaseplot) {
       info(logger, 'creating base plot for ggplot...')
-      return(plotScatter_ggplot(inputdata = data(), xlab = "Fußlänge in cm", ylab = "Gewicht in kg"))
+      return(plotScatter_ggplot(inputdata = data(), xlab = plot_labels$xlabel, ylab = plot_labels$ylabel, 
+                                group1_label = plot_labels$group1_label, group2_label = plot_labels$group2_label))
     }
   })
   
@@ -390,7 +406,9 @@ server <- function(input, output, session) {
     # info(logger, test)
     if (input$use_rbaseplot) {
       # Draw the initial plot
-      plotScatter_rbase(inputdata = data(), xlab = "Fußlänge in cm", ylab = "Gewicht in kg")
+      plotScatter_rbase(inputdata = data(), 
+                        xlab = plot_labels$xlabel, ylab = plot_labels$ylabel, 
+                        group1_label = plot_labels$group1_label, group2_label = plot_labels$group2_label)
       if (!is.null(coords$x)) {
         lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = plotboundary_color)
       }
