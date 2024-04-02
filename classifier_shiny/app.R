@@ -39,10 +39,12 @@ ui = {
         color = "primary",
         href = "https://scads.ai/",
         image = "https://scads.ai/wp-content/themes/scads/assets/images/scads_logo.svg"
-      )
+      ),
+      fixed = TRUE
   ),
   sidebar = dashboardSidebar(
-    minified = FALSE,
+    minified = FALSE, 
+    width = "20%",
     # data area
     tabsetPanel(type = 'pills', 
       tabPanel(title = "Einfacher Modus",
@@ -93,7 +95,6 @@ ui = {
     ),
                )
     ),
-    
     br(),
     checkboxInput(inputId = "use_rbaseplot", label = "Grafik beschleunigen", value = FALSE)
   ),
@@ -123,7 +124,8 @@ ui = {
                    numericInput(inputId = "seed", 
                                 label = "Datensatz Nr.", 
                                 value = 1, min = 1, max = 30000, step = 1, 
-                                width = '40%') # width refers to column width of the layout
+                                width = '40%'), # width refers to column width of the layout
+                   checkboxInput(inputId = "show_logistic_boundary", label = "logistische Regression", value = FALSE)
                  )
           )
         )
@@ -252,10 +254,18 @@ server <- function(input, output, session) {
     list(seed = seed, group1_params = group1_params, group2_params = group2_params)
   })
   
+  logisticCoords <- reactiveValues(x1=NULL, x2=NULL)
+  
   data <- reactive({
     generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
   })
   
+  calc_logistic_regression <- reactive({
+    req(data())
+    tmp <- calculate_logistic_decision_boundary(input_data = data())
+    logisticCoords$x1 <- tmp$x1
+    logisticCoords$x2 <- tmp$x2
+  })
   
   ################ drawing logic ############################
   
@@ -404,6 +414,7 @@ server <- function(input, output, session) {
     # info(logger, 'plot rendering')
     # test <- data() %>% colnames()
     # info(logger, test)
+    # todo: if (input$show_logistic_boundary) 
     if (input$use_rbaseplot) {
       # Draw the initial plot
       plotScatter_rbase(inputdata = data(), 
@@ -412,10 +423,16 @@ server <- function(input, output, session) {
       if (!is.null(coords$x)) {
         lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = plotboundary_color)
       }
+      if (!is.null(logisticCoords) && input$show_logistic_boundary) {
+        lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = 'green')
+      }
     } else {
       # ggplot version
       p <- base_plot()
       if (!is.null(coords$x)) {
+        if (!is.null(logisticCoords)) {
+          print(logisticCoords)
+        }
         p <- base_plot() + geom_line(data = data.frame(x = coords$x, y = coords$y), aes(x = x, y = y), color = plotboundary_color, linewidth = plotboundary_width)
       } 
       p
