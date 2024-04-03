@@ -135,7 +135,7 @@ calculate_logistic_decision_boundary <- function(input_data) {
     (-coefficients[1] - coefficients[2]*x1_val) / coefficients[3]
   }
   
-  logistic_x1 <- range(input_data)
+  logistic_x1 <- range(input_data$Variable1)
   
   logistic_x2 <- decision_boundary(logistic_x1)
   return(data.frame(x1 = logistic_x1, x2 = logistic_x2))

@@ -146,11 +146,11 @@ ui = {
       title = 'Debugging area',
       width = 12,
       fluidRow(
-        column(width = 2, align = "left", verbatimTextOutput('debugging')),
-        column(width = 4, align = "left", DTOutput("DataTable")),
-        column(width = 2, align = "center", tableOutput("AboveTable"))
+        column(width = 3, align = "left", verbatimTextOutput(outputId = 'debugging')),
+        column(width = 5, align = "left", DTOutput(outputId = "DataTable")),
+        column(width = 2, align = "center", tableOutput(outputId = "AboveTable"))
       ),
-      collapsed = TRUE
+      collapsed = FALSE
     )
   )
   #controlbar = dashboardControlbar()
@@ -254,17 +254,16 @@ server <- function(input, output, session) {
     list(seed = seed, group1_params = group1_params, group2_params = group2_params)
   })
   
-  logisticCoords <- reactiveValues(x1=NULL, x2=NULL)
-  
   data <- reactive({
     generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
   })
   
-  calc_logistic_regression <- reactive({
+  logisticCoords <- reactive({
+    tmp <- NULL
     req(data())
+    info(logger, 'calculate logistic regression... ')
     tmp <- calculate_logistic_decision_boundary(input_data = data())
-    logisticCoords$x1 <- tmp$x1
-    logisticCoords$x2 <- tmp$x2
+    return(tmp)
   })
   
   ################ drawing logic ############################
@@ -408,13 +407,13 @@ server <- function(input, output, session) {
   
   plotboundary_width <- 2
   plotboundary_color <- 'red'
+  plotboundary_logreg_color <- 'gray'
+  plotboundary_logreg_linetype <- 'dashed'
+  plotboundary_logreg_linetype_rbase <- 2
   
   output$plot <- renderPlot({
     req(data())
-    # info(logger, 'plot rendering')
-    # test <- data() %>% colnames()
-    # info(logger, test)
-    # todo: if (input$show_logistic_boundary) 
+    # hint: note the inconsistency when working with reactive() vs. reactiveValue, e.g. logisticCoords()$x1 vs. coords$x
     if (input$use_rbaseplot) {
       # Draw the initial plot
       plotScatter_rbase(inputdata = data(), 
@@ -424,17 +423,23 @@ server <- function(input, output, session) {
         lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = plotboundary_color)
       }
       if (!is.null(logisticCoords) && input$show_logistic_boundary) {
-        lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = 'green')
+        lines(x=logisticCoords()$x1, y=logisticCoords()$x2, 
+              lwd=plotboundary_width, 
+              col = plotboundary_logreg_color, 
+              lty = plotboundary_logreg_linetype_rbase)
       }
     } else {
       # ggplot version
       p <- base_plot()
       if (!is.null(coords$x)) {
-        if (!is.null(logisticCoords)) {
-          print(logisticCoords)
-        }
         p <- base_plot() + geom_line(data = data.frame(x = coords$x, y = coords$y), aes(x = x, y = y), color = plotboundary_color, linewidth = plotboundary_width)
       } 
+      if (!is.null(logisticCoords) && input$show_logistic_boundary) {
+        p <- p + geom_line(data = logisticCoords(), aes(x = x1, y = x2), 
+                           color = plotboundary_logreg_color, 
+                           linewidth = plotboundary_width, 
+                           linetype = plotboundary_logreg_linetype)
+      }
       p
     }
   })
@@ -452,6 +457,11 @@ server <- function(input, output, session) {
   })
   
   ################### debugging stuff #####################
+  output$debugging <- renderPrint({
+    #logisticCoords()
+    print(paste('user defined boundary: ', coords$x, coords$y, ' logistic boundary: ', logisticCoords()))
+  })
+  
   output$DataTable <- renderDT({
     # DOM elements: the length menu (l), the search box (f), the table (t), 
     # the information summary (i), and the pagination control (p), processing indicator (r)
