@@ -39,10 +39,12 @@ ui = {
         color = "primary",
         href = "https://scads.ai/",
         image = "https://scads.ai/wp-content/themes/scads/assets/images/scads_logo.svg"
-      )
+      ),
+      fixed = TRUE
   ),
   sidebar = dashboardSidebar(
-    minified = FALSE,
+    minified = FALSE, 
+    width = "18%",
     # data area
     tabsetPanel(type = 'pills', 
       tabPanel(title = "Einfacher Modus",
@@ -93,7 +95,6 @@ ui = {
     ),
                )
     ),
-    
     br(),
     checkboxInput(inputId = "use_rbaseplot", label = "Grafik beschleunigen", value = FALSE)
   ),
@@ -123,7 +124,8 @@ ui = {
                    numericInput(inputId = "seed", 
                                 label = "Datensatz Nr.", 
                                 value = 1, min = 1, max = 30000, step = 1, 
-                                width = '40%') # width refers to column width of the layout
+                                width = '40%'), # width refers to column width of the layout
+                   checkboxInput(inputId = "show_logistic_boundary", label = "logistische Regression", value = FALSE)
                  )
           )
         )
@@ -144,11 +146,11 @@ ui = {
       title = 'Debugging area',
       width = 12,
       fluidRow(
-        column(width = 2, align = "left", verbatimTextOutput('debugging')),
-        column(width = 4, align = "left", DTOutput("DataTable")),
-        column(width = 2, align = "center", tableOutput("AboveTable"))
+        column(width = 3, align = "left", verbatimTextOutput(outputId = 'debugging')),
+        column(width = 5, align = "left", DTOutput(outputId = "DataTable")),
+        column(width = 2, align = "center", tableOutput(outputId = "AboveTable"))
       ),
-      collapsed = TRUE
+    collapsed = TRUE
     )
   )
   #controlbar = dashboardControlbar()
@@ -256,7 +258,6 @@ server <- function(input, output, session) {
     generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
   })
   
-  
   ################ drawing logic ############################
   
   # draw() controls whether to collect hover coordinates or not
@@ -324,6 +325,14 @@ server <- function(input, output, session) {
   })
   
   ###################### classification stuff ##############################
+  
+  logisticBoundary <- reactive({
+    tmp <- NULL
+    req(data())
+    info(logger, 'calculate logistic regression... ')
+    tmp <- calculate_logistic_decision_boundary(input_data = data())
+    return(tmp)
+  })
   
   AboveData <- reactive({
     abovetmp <- NULL
@@ -398,12 +407,17 @@ server <- function(input, output, session) {
   
   plotboundary_width <- 2
   plotboundary_color <- 'red'
+  plotboundary_logreg_color <- 'gray'
+  plotboundary_logreg_linetype <- 'dashed'
+  plotboundary_logreg_linetype_rbase <- 2
   
   output$plot <- renderPlot({
     req(data())
-    # info(logger, 'plot rendering')
-    # test <- data() %>% colnames()
-    # info(logger, test)
+    # Get the limits of x and y axes from the base plot
+    x_limits <- c(min(data()$Variable1), max(data()$Variable1))
+    y_limits <- c(min(data()$Variable2), max(data()$Variable2))
+    
+    # hint: note the inconsistency when working with reactive() vs. reactiveValue, e.g. logisticBoundary()$x1 vs. coords$x
     if (input$use_rbaseplot) {
       # Draw the initial plot
       plotScatter_rbase(inputdata = data(), 
@@ -412,13 +426,27 @@ server <- function(input, output, session) {
       if (!is.null(coords$x)) {
         lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = plotboundary_color)
       }
+      if (!is.null(logisticBoundary) && input$show_logistic_boundary) {
+        abline(a = logisticBoundary()$intercept, b = logisticBoundary()$slope, 
+              lwd=plotboundary_width, 
+              col = plotboundary_logreg_color, 
+              lty = plotboundary_logreg_linetype_rbase)
+      }
     } else {
       # ggplot version
       p <- base_plot()
       if (!is.null(coords$x)) {
-        p <- base_plot() + geom_line(data = data.frame(x = coords$x, y = coords$y), aes(x = x, y = y), color = plotboundary_color, linewidth = plotboundary_width)
+        p <- base_plot() + geom_line(data = data.frame(x = coords$x, y = coords$y), aes(x = x, y = y), 
+                                     color = plotboundary_color, 
+                                     linewidth = plotboundary_width)
       } 
-      p
+      if (!is.null(logisticBoundary) && input$show_logistic_boundary) {
+        p <- p + geom_abline(intercept = logisticBoundary()$intercept, slope = logisticBoundary()$slope, 
+                           color = plotboundary_logreg_color, 
+                           linewidth = plotboundary_width, 
+                           linetype = plotboundary_logreg_linetype)
+      }
+      p 
     }
   })
   
@@ -435,6 +463,11 @@ server <- function(input, output, session) {
   })
   
   ################### debugging stuff #####################
+  output$debugging <- renderPrint({
+    #logisticBoundary()
+    print(paste('user defined boundary coordinates: ', coords$x, coords$y, ' logistic boundary parameters: ', logisticBoundary()))
+  })
+  
   output$DataTable <- renderDT({
     # DOM elements: the length menu (l), the search box (f), the table (t), 
     # the information summary (i), and the pagination control (p), processing indicator (r)
