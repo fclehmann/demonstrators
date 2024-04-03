@@ -44,7 +44,7 @@ ui = {
   ),
   sidebar = dashboardSidebar(
     minified = FALSE, 
-    width = "20%",
+    width = "18%",
     # data area
     tabsetPanel(type = 'pills', 
       tabPanel(title = "Einfacher Modus",
@@ -150,7 +150,7 @@ ui = {
         column(width = 5, align = "left", DTOutput(outputId = "DataTable")),
         column(width = 2, align = "center", tableOutput(outputId = "AboveTable"))
       ),
-      collapsed = FALSE
+    collapsed = TRUE
     )
   )
   #controlbar = dashboardControlbar()
@@ -258,14 +258,6 @@ server <- function(input, output, session) {
     generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
   })
   
-  logisticCoords <- reactive({
-    tmp <- NULL
-    req(data())
-    info(logger, 'calculate logistic regression... ')
-    tmp <- calculate_logistic_decision_boundary(input_data = data())
-    return(tmp)
-  })
-  
   ################ drawing logic ############################
   
   # draw() controls whether to collect hover coordinates or not
@@ -333,6 +325,14 @@ server <- function(input, output, session) {
   })
   
   ###################### classification stuff ##############################
+  
+  logisticBoundary <- reactive({
+    tmp <- NULL
+    req(data())
+    info(logger, 'calculate logistic regression... ')
+    tmp <- calculate_logistic_decision_boundary(input_data = data())
+    return(tmp)
+  })
   
   AboveData <- reactive({
     abovetmp <- NULL
@@ -413,7 +413,11 @@ server <- function(input, output, session) {
   
   output$plot <- renderPlot({
     req(data())
-    # hint: note the inconsistency when working with reactive() vs. reactiveValue, e.g. logisticCoords()$x1 vs. coords$x
+    # Get the limits of x and y axes from the base plot
+    x_limits <- c(min(data()$Variable1), max(data()$Variable1))
+    y_limits <- c(min(data()$Variable2), max(data()$Variable2))
+    
+    # hint: note the inconsistency when working with reactive() vs. reactiveValue, e.g. logisticBoundary()$x1 vs. coords$x
     if (input$use_rbaseplot) {
       # Draw the initial plot
       plotScatter_rbase(inputdata = data(), 
@@ -422,8 +426,8 @@ server <- function(input, output, session) {
       if (!is.null(coords$x)) {
         lines(x=coords$x, y=coords$y, lwd=plotboundary_width, col = plotboundary_color)
       }
-      if (!is.null(logisticCoords) && input$show_logistic_boundary) {
-        lines(x=logisticCoords()$x1, y=logisticCoords()$x2, 
+      if (!is.null(logisticBoundary) && input$show_logistic_boundary) {
+        abline(a = logisticBoundary()$intercept, b = logisticBoundary()$slope, 
               lwd=plotboundary_width, 
               col = plotboundary_logreg_color, 
               lty = plotboundary_logreg_linetype_rbase)
@@ -432,15 +436,17 @@ server <- function(input, output, session) {
       # ggplot version
       p <- base_plot()
       if (!is.null(coords$x)) {
-        p <- base_plot() + geom_line(data = data.frame(x = coords$x, y = coords$y), aes(x = x, y = y), color = plotboundary_color, linewidth = plotboundary_width)
+        p <- base_plot() + geom_line(data = data.frame(x = coords$x, y = coords$y), aes(x = x, y = y), 
+                                     color = plotboundary_color, 
+                                     linewidth = plotboundary_width)
       } 
-      if (!is.null(logisticCoords) && input$show_logistic_boundary) {
-        p <- p + geom_line(data = logisticCoords(), aes(x = x1, y = x2), 
+      if (!is.null(logisticBoundary) && input$show_logistic_boundary) {
+        p <- p + geom_abline(intercept = logisticBoundary()$intercept, slope = logisticBoundary()$slope, 
                            color = plotboundary_logreg_color, 
                            linewidth = plotboundary_width, 
                            linetype = plotboundary_logreg_linetype)
       }
-      p
+      p 
     }
   })
   
@@ -458,8 +464,8 @@ server <- function(input, output, session) {
   
   ################### debugging stuff #####################
   output$debugging <- renderPrint({
-    #logisticCoords()
-    print(paste('user defined boundary: ', coords$x, coords$y, ' logistic boundary: ', logisticCoords()))
+    #logisticBoundary()
+    print(paste('user defined boundary coordinates: ', coords$x, coords$y, ' logistic boundary parameters: ', logisticBoundary()))
   })
   
   output$DataTable <- renderDT({

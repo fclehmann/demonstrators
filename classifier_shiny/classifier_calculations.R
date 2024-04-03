@@ -138,5 +138,7 @@ calculate_logistic_decision_boundary <- function(input_data) {
   logistic_x1 <- range(input_data$Variable1)
   
   logistic_x2 <- decision_boundary(logistic_x1)
-  return(data.frame(x1 = logistic_x1, x2 = logistic_x2))
+  tmp <- data.frame(x = logistic_x1, y = logistic_x2)
+  # naming (x,y) is chosen according to function calculate_linear_boundary()
+  return(calculate_linear_boundary(tmp))
 }
