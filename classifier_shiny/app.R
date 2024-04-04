@@ -318,7 +318,7 @@ server <- function(input, output, session) {
                 line = 'Mauszeiger zum Ende der gewünschten Linie bewegen und anschließend klicken, um Endpunkt der Linie zu setzen.'
         )
       } else {
-        text <- 'Jetzt kann die Klassifikationsgrenze auf verschiedene Datensätze angewendet werden.\n Für neu zeichnen Button "Reset line" drücken oder anderen Zeichenmodus wählen.'
+        text <- 'Jetzt kann die Klassifikationsgrenze auf verschiedene Datensätze angewendet werden. Für neu zeichnen Button "Reset line" drücken oder anderen Zeichenmodus wählen.'
       }
     }
     HTML(text)
