@@ -11,7 +11,7 @@ library(log4r)
 library(fresh)
 
 # general hints: 
-# 1. remember to call and assign reactive values myvar <- reactiveVal(NULL) using parantheses () by myvar()
+# 1. remember to call and assign reactiveVal, as e.g. myvar <- reactiveVal(NULL) using parantheses () by myvar()
 # this is not the case for reactiveValues()
 
 # 2. the req() function in Shiny treats a vector containing all FALSE values as non-existent. 
