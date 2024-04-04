@@ -318,7 +318,7 @@ server <- function(input, output, session) {
                 line = 'Mauszeiger zum Ende der gewünschten Linie bewegen und anschließend klicken, um Endpunkt der Linie zu setzen.'
         )
       } else {
-        text <- 'Jetzt kann die Klassifikationsgrenze auf verschiedene Datensätze angewendet werden. Für neu zeichnen Button "Reset line" drücken oder anderen Zeichenmodus wählen.'
+        text <- 'Jetzt kann die Klassifikationsgrenze auf verschiedene Datensätze angewendet werden.\n Für neu zeichnen Button "Reset line" drücken oder anderen Zeichenmodus wählen.'
       }
     }
     HTML(text)
@@ -374,8 +374,15 @@ server <- function(input, output, session) {
       # names_from = Reference or names_from Prediction
       pivot_wider(names_from = Prediction, values_from = Freq, values_fill = 0)
     # change the column to be sorted according to pivot_wider
+    classification_data %<>%
+      mutate(Reference = case_when(
+        Reference == "Group1" ~ plot_labels$group1_label,
+        Reference == "Group2" ~ plot_labels$group2_label,
+        TRUE ~ as.character(Reference)  # Keep the original value if it doesn't match any condition
+      ))
+    
     group_labels <- as.character(sort(unique(classification_data$Reference), decreasing = FALSE))
-  
+    
     # Modify column names
     colnames(classification_data) <- c('tatsächliche<br>Gruppe', 
                                         paste0("klassifiziert als <br>", group_labels))
