@@ -465,6 +465,7 @@ server <- function(input, output, session) {
     coords$y <- NULL
     draw(FALSE)
     drawing_finished(FALSE)
+    updateCheckboxInput(session, "show_logistic_boundary", value = FALSE)
     # hint: use the <<- operator to assign NULL to the reactive expression outside its definition
     #AboveData <<- NULL
   })
