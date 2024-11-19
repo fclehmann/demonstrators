@@ -1,5 +1,10 @@
 library(httr)
 library(jsonlite)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(magrittr)
+
 
 # Define the API endpoint
 url <- "http://127.0.0.1:8000/predict/"
@@ -21,25 +26,20 @@ if (status_code(response) == 200) {
   # Parse the JSON content
   item_name <- names(content(response, "parsed"))[1]
   content <- content(response, "parsed")[[item_name]]
-  predictions_df <- do.call(rbind, content)
+  animal_classifier_df <- do.call(rbind, content)
   
-  colnames(predictions_df) <- c("image_input", "predicted_class_idx", "predicted_class_label", 
+  colnames(animal_classifier_df) <- c("image_input", "predicted_class_idx", "predicted_class_label", 
                                 "output_1", "output_2", "output_3")
   
   # Convert to data frame (ensure it's treated as a data frame)
-  predictions_df <- as.data.frame(predictions_df)
+  animal_classifier_df <- as.data.frame(animal_classifier_df)
 } else {
   print(paste("Request failed with status code:", status_code(response)))
 }
 
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(magrittr)
-
-predictions_df %<>% mutate_all(unlist)#
 
 
+animal_classifier_df %<>% mutate_all(unlist)# %>% as.data.frame()
 
-predictions_df %>% ggplot() +
-  geom_point(aes(x = output_1, y = output_3, colour = predicted_class_label))
+
+save(animal_classifier_df, file = '~/Dokumente/R_projects/demonstrators/classifier_shiny/data/animal_classifier-last_layer_data.Rdata')
