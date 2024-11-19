@@ -127,7 +127,7 @@ calculate_classification_results <- function(referenceData, aboveData){
 ####### logistic regression #############
 calculate_logistic_decision_boundary <- function(input_data) {
   # estimate logistic regression model
-  model <- glm(Group ~ Variable1 + Variable2, family = binomial, data = input_data)
+  model <- glm(as.factor(Group) ~ Variable1 + Variable2, family = binomial, data = input_data)
   
   # Coefficients of the logistic regression model
   coefficients <- coef(model)
