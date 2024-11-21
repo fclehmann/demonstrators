@@ -47,7 +47,7 @@ ui = {
     width = "18%",
     # data area
     tabsetPanel(type = 'pills', 
-                selected = 'animal_classifier',
+                #selected = 'animal_classifier',
                 id = 'main_tabs',
       tabPanel(title = "Stufe 1",
                radioButtons("predefinedsettings_selector", "Konfiguration wählen",
