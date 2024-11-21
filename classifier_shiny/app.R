@@ -173,7 +173,7 @@ ui = {
         column(width = 7, align = "left", DTOutput(outputId = "DataTable")),
         column(width = 2, align = "center", tableOutput(outputId = "AboveTable"))
       ),
-    collapsed = F#TRUE
+    collapsed = TRUE
     )
   )
   #controlbar = dashboardControlbar()
