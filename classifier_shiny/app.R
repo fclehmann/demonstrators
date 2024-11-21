@@ -36,9 +36,9 @@ ui = {
     header = dashboardHeader(
       title = dashboardBrand(
         title = "Klassifikator",
-        color = "primary",
+        color = "white",
         href = "https://scads.ai/",
-        image = "https://scads.ai/wp-content/themes/scads/assets/images/scads_logo.svg"
+        image = "https://scads.ai/wp-content/themes/scads2023/assets/images/logo.png"
       ),
       fixed = TRUE
   ),
@@ -47,14 +47,28 @@ ui = {
     width = "18%",
     # data area
     tabsetPanel(type = 'pills', 
-      tabPanel(title = "Einfacher Modus",
+                #selected = 'animal_classifier',
+                id = 'main_tabs',
+      tabPanel(title = "Stufe 1",
                radioButtons("predefinedsettings_selector", "Konfiguration wählen",
                             choices = names(predefined_settings),
                             selected = names(predefined_settings)[1]
                             ), 
                uiOutput("setting_description")
                ),
-      tabPanel(title = 'Fortgeschritten',
+      #### animal classifier #####
+      tabPanel(title = "Stufe 2",
+               value = 'animal_classifier',
+               textOutput(outputId = "animal_classifier_selection_message"), # Dynamic description, 
+               div(style = "height: 10px;"),
+               verbatimTextOutput(outputId = "animal_classifier_output"), # selection message for animal classifier categories
+               uiOutput(outputId = "animal_classifier_checkboxes"),  # Display selected AnimalClassifierAvailCategories
+               br(),
+               sliderInput(inputId = "n_animal", label = "Anzahl Beobachtungen/Kategorie:", value = 20, min = 10, max = 40, step = 5),
+               br(),
+               checkboxInput(inputId = "animal_classifier_show_images", label = "Originalbild zeigen", value = TRUE)
+      ),
+      tabPanel(title = 'Stufe 3',
                tabsetPanel(
       tabPanel(title = "Group A",
                sliderInput("n_1", "Number of Observations:", value = 10, min = 10, max = 200, step = 5),
@@ -103,7 +117,8 @@ ui = {
     box(title = 'Übersicht und Auswertung',
         width = 12,
         fluidRow(
-          column(width = 2, 
+          style = "height: 150px; overflow: hidden; font-size: 14px;",
+          column(width = 1, 
                  align = "left", 
                  radioButtons(inputId = "drawType", 
                               label = "Zeichenmodus",
@@ -113,7 +128,15 @@ ui = {
                  actionButton(inputId = "reset", label = "Reset line")
           ),
           column(width = 2, align = 'left', textOutput("instructionsText")),
-          #column(width = 2, align = 'left', style = "white-space: normal;", verbatimTextOutput("instructionsText")),
+          ######################
+          column(width = 2, 
+                 align = "center",
+                 conditionalPanel(
+                   condition = "input.animal_classifier_show_images && input.main_tabs == 'animal_classifier'",
+                   uiOutput(outputId = "animal_image_display")  # Placeholder for displaying animal classifier images
+                 )
+          ),
+          #####################
           column(width = 5, align = "center", tableOutput("classificationTable")), 
           column(width = 2, 
                  align = "left",
@@ -146,11 +169,11 @@ ui = {
       title = 'Debugging area',
       width = 12,
       fluidRow(
-        column(width = 3, align = "left", verbatimTextOutput(outputId = 'debugging')),
-        column(width = 5, align = "left", DTOutput(outputId = "DataTable")),
+        column(width = 2, align = "left", verbatimTextOutput(outputId = 'debugging')),
+        column(width = 7, align = "left", DTOutput(outputId = "DataTable")),
         column(width = 2, align = "center", tableOutput(outputId = "AboveTable"))
       ),
-    collapsed = TRUE
+    collapsed = F#TRUE
     )
   )
   #controlbar = dashboardControlbar()
@@ -167,12 +190,15 @@ server <- function(input, output, session) {
   
   # set labels to default values, using the predefined settings can overwrite these
   
+  
   xlabel_default <- 'Variable 1'
   ylabel_default <- 'Variable 2'
   group1_label_default = 'Group A'
   group2_label_default = 'Group B'
   plot_labels <- reactiveValues(xlabel = xlabel_default, ylabel = ylabel_default, 
                                 group1_label = group1_label_default, group2_label = group2_label_default)
+  
+  ##### non-animal classifier configuration ####
   
   # Observe changes in the predefined settings and update the slider values accordingly.
   observeEvent(input$predefinedsettings_selector, {
@@ -210,6 +236,90 @@ server <- function(input, output, session) {
     tmp <- predefined_settings[[input$predefinedsettings_selector]]$description
     HTML(tmp, collapse = "<br/>")
   })
+  
+  ##### animal classifier configuration ####
+  
+  if (file.exists('data/animal_classifier-last_layer_data.Rdata')){
+    cat('loading animal classifier data file...\n')
+    load(file = 'data/animal_classifier-last_layer_data.Rdata')
+    cat('existing obs: ', ls(), '\n')
+    animal_classifier_avail_categories <- animal_classifier_df$true_class %>% unique()  
+    animal_classifier_df %<>% 
+      dplyr::select(-predicted_class_idx, -output_3) %>% 
+      mutate(Group = true_class)
+    # this renaming is done that the structure is compatible with existing calculation and drawing functions
+    animal_classifier_df %<>% rename(Variable1 = output_1, Variable2 = output_2)
+    animal_classifier_df %<>% mutate(image_input = basename(image_input))
+    animal_classifier_images <- list.files(path = 'www/', recursive = TRUE)
+    animal_classifier_df %<>% mutate(image_input = animal_classifier_images[match(image_input, basename(animal_classifier_images))])
+  }
+  
+  IsAnimalClassifier <- reactive({
+    # check activation of animal classifier tab
+    input$main_tabs == "animal_classifier"
+  })
+      
+  AnimalClassifierConfig <- reactive({
+    req(validated_seed())
+    seed <- as.numeric(validated_seed())
+    # Check if exactly two categories are selected
+    selected_categories <- input$animal_classifier_selected_categories
+    n_animal <- input$n_animal  # Assuming the slider is called `animal_classifier_slider`
+    
+    # If two categories are selected, return them as a list with the new 'n_animal' property
+    if (length(selected_categories) == 2) {
+      return(list(
+        categories = selected_categories,  
+        n_animal = n_animal, 
+        seed = seed
+      ))
+    } else {
+      # Return NULL if not exactly two categories are selected
+      return(NULL)
+    }
+  })
+  
+  # Generate dynamic checkboxes for animal classifier
+  output$animal_classifier_checkboxes <- renderUI({
+    # Count the number of selected animal_classifier_categories
+    selected_count <- length(input$animal_classifier_selected_categories)
+    
+    # Dynamically set the label based on selection count
+    dynamic_label <- if (selected_count == 0) {
+      "Zwei Kategorien auswählen..."
+    } else if (selected_count == 1) {
+      "Eine weitere Kategorie wählen..."
+    } else {
+      paste0("Kategorien gewählt.") 
+    }
+    
+    # Render the checkboxGroupInput with the dynamic label
+    checkboxGroupInput(
+      inputId = "animal_classifier_selected_categories", 
+      label = dynamic_label,  
+      choices = animal_classifier_avail_categories,
+      selected = if (is.null(input$animal_classifier_selected_categories)) {
+        head(animal_classifier_avail_categories, 2)  # Default to first two categories
+      } else {
+        input$animal_classifier_selected_categories  # Preserve current selection
+      }
+    )
+    
+  })
+  
+  # Restrict the number of selected animal_classifier_categories to a maximum of two
+  observeEvent(input$animal_classifier_selected_categories, {
+    if (length(input$animal_classifier_selected_categories) > 2) {
+      # Revert to the first two selected AnimalClassifierAvailCategories
+      updateCheckboxGroupInput(
+        session,
+        inputId = "animal_classifier_selected_categories",
+        selected = input$animal_classifier_selected_categories[1:2]
+      )
+    } 
+  })
+
+  #### general configuration ####
   
   # validate seed value because numericInput cannot be locked against manual manipulation
   validated_seed <- reactive({
@@ -255,7 +365,22 @@ server <- function(input, output, session) {
   })
   
   data <- reactive({
-    generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params)
+    if (!IsAnimalClassifier()) {
+      return(generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params))
+    } else if (!is.null(AnimalClassifierConfig())) {
+      # assign axis and group labels
+      plot_labels$xlabel <- 'völlig unvorstellbare Dimension 1'
+      plot_labels$ylabel <- 'völlig unvorstellbare Dimension 2'
+      plot_labels$group1_label <- AnimalClassifierConfig()$categories[1]
+      plot_labels$group2_label <- AnimalClassifierConfig()$categories[2]
+      set.seed(AnimalClassifierConfig()$seed)
+      animal_plot_data <- animal_classifier_df %>% 
+        filter(Group %in% AnimalClassifierConfig()$categories) %>% 
+        group_by(Group) %>% 
+        sample_n(size = AnimalClassifierConfig()$n_animal, replace = FALSE)
+      animal_plot_data %<>% mutate(Group = as.factor(if_else(Group == AnimalClassifierConfig()$categories[1], true = 'Group1', false = 'Group2')))
+      return(animal_plot_data)
+    }
   })
   
   ################ drawing logic ############################
@@ -457,6 +582,27 @@ server <- function(input, output, session) {
     }
   })
   
+  output$animal_image_display <- renderUI({
+    if (!draw() && !is.null(data())) {
+      hover <- input$plot_hover
+      if (!is.null(hover)) {
+        # Get the closest point by matching coordinates
+        closest_point <- which.min(abs(data()$Variable1 - hover$x) + abs(data()$Variable2 - hover$y))
+        image_file <- data()$image_input[closest_point]
+        x_coord <- round(data()$Variable1[closest_point], 2)
+        y_coord <- round(data()$Variable2[closest_point], 2)
+        tagList(
+          div(
+            style = "height: 120px;",
+            tags$img(src = image_file, style = "height: 95%; width: auto;"),
+            tags$p(paste0('(x,y)=', '(', x_coord, ',', y_coord, ')'))
+          )
+        )
+      } else {
+        return(NULL)  
+      }
+    }
+  })
   ################ reset stuff ###########################
   
   observeEvent(c(input$drawType, input$reset), handlerExpr = {
@@ -473,7 +619,11 @@ server <- function(input, output, session) {
   ################### debugging stuff #####################
   output$debugging <- renderPrint({
     #logisticBoundary()
-    print(paste('user defined boundary coordinates: ', coords$x, coords$y, ' logistic boundary parameters: ', logisticBoundary()))
+    print(paste0('user defined boundary coordinates: ', coords$x, coords$y, ' logistic boundary parameters: ', logisticBoundary()))
+    print(paste0('animal_classifier = ', IsAnimalClassifier()))
+    print(paste0('available animal categories: ', animal_classifier_avail_categories))
+    print(paste0('selected animal categories: ', AnimalClassifierConfig()$categories))
+    print(paste0('animal n: ', AnimalClassifierConfig()$n_animal))
   })
   
   output$DataTable <- renderDT({
@@ -497,8 +647,6 @@ server <- function(input, output, session) {
     #counts_df <- data.frame(isAbove = names(counts), Count = as.numeric(counts))
     return(counts)
   })
-  
-  
 }
 
 shinyApp(ui, server)
