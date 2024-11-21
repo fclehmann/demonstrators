@@ -64,7 +64,9 @@ ui = {
                verbatimTextOutput(outputId = "animal_classifier_output"), # selection message for animal classifier categories
                uiOutput(outputId = "animal_classifier_checkboxes"),  # Display selected AnimalClassifierAvailCategories
                br(),
-               sliderInput(inputId = "n_animal", label = "Anzahl Beobachtungen/Kategorie:", value = 20, min = 10, max = 40, step = 5)
+               sliderInput(inputId = "n_animal", label = "Anzahl Beobachtungen/Kategorie:", value = 20, min = 10, max = 40, step = 5),
+               br(),
+               checkboxInput(inputId = "animal_classifier_show_images", label = "Originalbild zeigen", value = TRUE)
       ),
       tabPanel(title = 'Stufe 3',
                tabsetPanel(
@@ -115,7 +117,8 @@ ui = {
     box(title = 'Übersicht und Auswertung',
         width = 12,
         fluidRow(
-          column(width = 2, 
+          style = "height: 150px; overflow: hidden; font-size: 14px;",
+          column(width = 1, 
                  align = "left", 
                  radioButtons(inputId = "drawType", 
                               label = "Zeichenmodus",
@@ -125,7 +128,15 @@ ui = {
                  actionButton(inputId = "reset", label = "Reset line")
           ),
           column(width = 2, align = 'left', textOutput("instructionsText")),
-          #column(width = 2, align = 'left', style = "white-space: normal;", verbatimTextOutput("instructionsText")),
+          ######################
+          column(width = 2, 
+                 align = "center",
+                 conditionalPanel(
+                   condition = "input.animal_classifier_show_images && input.main_tabs == 'animal_classifier'",
+                   uiOutput(outputId = "animal_image_display")  # Placeholder for displaying animal classifier images
+                 )
+          ),
+          #####################
           column(width = 5, align = "center", tableOutput("classificationTable")), 
           column(width = 2, 
                  align = "left",
@@ -232,9 +243,15 @@ server <- function(input, output, session) {
     cat('loading animal classifier data file...\n')
     load(file = 'data/animal_classifier-last_layer_data.Rdata')
     cat('existing obs: ', ls(), '\n')
-    animal_classifier_avail_categories <- animal_classifier_df$predicted_class_label %>% unique()  
-    animal_classifier_df %<>% dplyr::select(-predicted_class_idx, -output_3)
-    colnames(animal_classifier_df)[2:(length(colnames(animal_classifier_df)))] <- c('Group', 'Variable1', 'Variable2')
+    animal_classifier_avail_categories <- animal_classifier_df$true_class %>% unique()  
+    animal_classifier_df %<>% 
+      dplyr::select(-predicted_class_idx, -output_3) %>% 
+      mutate(Group = true_class)
+    # this renaming is done that the structure is compatible with existing calculation and drawing functions
+    animal_classifier_df %<>% rename(Variable1 = output_1, Variable2 = output_2)
+    animal_classifier_df %<>% mutate(image_input = basename(image_input))
+    animal_classifier_images <- list.files(path = 'www/', recursive = TRUE)
+    animal_classifier_df %<>% mutate(image_input = animal_classifier_images[match(image_input, basename(animal_classifier_images))])
   }
   
   IsAnimalClassifier <- reactive({
@@ -281,8 +298,13 @@ server <- function(input, output, session) {
       inputId = "animal_classifier_selected_categories", 
       label = dynamic_label,  
       choices = animal_classifier_avail_categories,
-      selected = input$animal_classifier_selected_categories  # Preserve current selection
+      selected = if (is.null(input$animal_classifier_selected_categories)) {
+        head(animal_classifier_avail_categories, 2)  # Default to first two categories
+      } else {
+        input$animal_classifier_selected_categories  # Preserve current selection
+      }
     )
+    
   })
   
   # Restrict the number of selected animal_classifier_categories to a maximum of two
@@ -560,6 +582,27 @@ server <- function(input, output, session) {
     }
   })
   
+  output$animal_image_display <- renderUI({
+    if (!draw() && !is.null(data())) {
+      hover <- input$plot_hover
+      if (!is.null(hover)) {
+        # Get the closest point by matching coordinates
+        closest_point <- which.min(abs(data()$Variable1 - hover$x) + abs(data()$Variable2 - hover$y))
+        image_file <- data()$image_input[closest_point]
+        x_coord <- round(data()$Variable1[closest_point], 2)
+        y_coord <- round(data()$Variable2[closest_point], 2)
+        tagList(
+          div(
+            style = "height: 120px;",
+            tags$img(src = image_file, style = "height: 95%; width: auto;"),
+            tags$p(paste0('(x,y)=', '(', x_coord, ',', y_coord, ')'))
+          )
+        )
+      } else {
+        return(NULL)  
+      }
+    }
+  })
   ################ reset stuff ###########################
   
   observeEvent(c(input$drawType, input$reset), handlerExpr = {

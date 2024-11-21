@@ -7,6 +7,9 @@ library(magrittr)
 
 
 # Define the API endpoint
+# starting the server:
+# cd ~/Dokumente/Python_projects/understand_classification/;uvicorn animal_classifier:app --reload
+
 url <- "http://127.0.0.1:8000/predict/"
 
 # List of images to predict
@@ -21,7 +24,6 @@ response <- POST(
   body = list(image_inputs = images),  # Pass the images as JSON body
   encode = "json"                     # Automatically encode the body as JSON
 )
-
 
 # Check the response status and parse the content if successful
 if (status_code(response) == 200) {
@@ -40,6 +42,8 @@ if (status_code(response) == 200) {
 }
 
 animal_classifier_df %<>% mutate_all(unlist)# %>% as.data.frame()
+animal_classifier_df %<>% mutate(true_class = basename(dirname(image_input)))
+animal_classifier_df %<>% mutate(prediction_correct = (predicted_class_label == true_class))
 save(animal_classifier_df, file = '~/Dokumente/R_projects/demonstrators/classifier_shiny/data/animal_classifier-last_layer_data.Rdata')
 
 ##### creating thumbnails of images ####
