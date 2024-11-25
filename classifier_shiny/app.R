@@ -182,6 +182,12 @@ ui = {
 ################ server function ########################
 server <- function(input, output, session) {
   
+  # Create a unique directory for each session using session token (or ID)
+  tmp_parent <- "data/tmp-session/"
+  user_dir <- file.path(tmp_parent, session$token)
+  dir.create(path = user_dir, recursive = T, showWarnings = T)
+  cat('tmp-dir: ', user_dir, '\n')
+  
   ######## Data related stuff #############
   # The reactivity of data generation is based on changes of the ui elements that control the data parameters.
   # Therefore, predefined settings are applied by changing the ui elements values'.
@@ -614,6 +620,14 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "show_logistic_boundary", value = FALSE)
     # hint: use the <<- operator to assign NULL to the reactive expression outside its definition
     #AboveData <<- NULL
+  })
+  
+  # Cleanup: delete temporary files when the session ends
+  session$onSessionEnded(function() {
+    if (dir.exists(user_dir)) {
+      unlink(user_dir, recursive = TRUE)
+      message("Temporary files deleted for session:", session$token)
+    }
   })
   
   ################### debugging stuff #####################
