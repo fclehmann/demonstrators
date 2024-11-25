@@ -239,40 +239,47 @@ server <- function(input, output, session) {
   
   ##### animal classifier configuration ####
   
-  if (file.exists('data/animal_classifier-last_layer_data.Rdata')){
+  animal_data_file <- 'data/animal_classifier-last_layer_data.Rdata'
+  if (file.exists(animal_data_file)){
     cat('loading animal classifier data file...\n')
-    load(file = 'data/animal_classifier-last_layer_data.Rdata')
+    load(file = animal_data_file)
     cat('existing obs: ', ls(), '\n')
     animal_classifier_avail_categories <- animal_classifier_df$true_class %>% unique()  
     animal_classifier_df %<>% 
       dplyr::select(-predicted_class_idx, -output_3) %>% 
       mutate(Group = true_class)
     # this renaming is done that the structure is compatible with existing calculation and drawing functions
-    animal_classifier_df %<>% rename(Variable1 = output_1, Variable2 = output_2)
-    animal_classifier_df %<>% mutate(image_input = basename(image_input))
-    animal_classifier_images <- list.files(path = 'www/', recursive = TRUE)
-    animal_classifier_df %<>% mutate(image_input = animal_classifier_images[match(image_input, basename(animal_classifier_images))])
+    animal_classifier_df %<>% rename(Variable1 = output_1, Variable2 = output_2, initial_image = image_input)
+    # extract relevant path part only, as the Java Script accesses images from dir www/
+    animal_classifier_df %<>% mutate(image_input = paste0(basename(dirname(initial_image)), '/', basename(initial_image)))
   }
   
-  IsAnimalClassifier <- reactive({
-    # check activation of animal classifier tab
-    input$main_tabs == "animal_classifier"
+  isAnimalClassifier <- reactiveVal(FALSE)
+  
+  # Observe changes in the active tab and update the reactiveVal
+  observe({
+    isAnimalClassifier(input$main_tabs == "animal_classifier")
   })
       
   AnimalClassifierConfig <- reactive({
-    req(validated_seed())
-    seed <- as.numeric(validated_seed())
-    # Check if exactly two categories are selected
-    selected_categories <- input$animal_classifier_selected_categories
-    n_animal <- input$n_animal  # Assuming the slider is called `animal_classifier_slider`
-    
-    # If two categories are selected, return them as a list with the new 'n_animal' property
-    if (length(selected_categories) == 2) {
-      return(list(
-        categories = selected_categories,  
-        n_animal = n_animal, 
-        seed = seed
-      ))
+    if (isAnimalClassifier()) {
+      req(validated_seed())
+      seed <- as.numeric(validated_seed())
+      # Check if exactly two categories are selected
+      selected_categories <- input$animal_classifier_selected_categories
+      n_animal <- input$n_animal  # Assuming the slider is called `animal_classifier_slider`
+      
+      # If two categories are selected, return them as a list with the new 'n_animal' property
+      if (length(selected_categories) == 2) {
+        return(list(
+          categories = selected_categories,  
+          n_animal = n_animal, 
+          seed = seed
+        ))
+      } else {
+        # Return NULL if not exactly two categories are selected
+        return(NULL)
+      }
     } else {
       # Return NULL if not exactly two categories are selected
       return(NULL)
@@ -365,7 +372,7 @@ server <- function(input, output, session) {
   })
   
   data <- reactive({
-    if (!IsAnimalClassifier()) {
+    if (!isAnimalClassifier()) {
       return(generateData(DataParams()$seed, DataParams()$group1_params, DataParams()$group2_params))
     } else if (!is.null(AnimalClassifierConfig())) {
       # assign axis and group labels
@@ -583,12 +590,13 @@ server <- function(input, output, session) {
   })
   
   output$animal_image_display <- renderUI({
-    if (!draw() && !is.null(data())) {
+    if (!draw() && !is.null(data()) && !is.null(AnimalClassifierConfig())) {
       hover <- input$plot_hover
       if (!is.null(hover)) {
         # Get the closest point by matching coordinates
         closest_point <- which.min(abs(data()$Variable1 - hover$x) + abs(data()$Variable2 - hover$y))
-        image_file <- data()$image_input[closest_point]
+        image_file <- paste0('images/', data()$image_input[closest_point])
+        #cat('current image: ', image_file, '\n')
         x_coord <- round(data()$Variable1[closest_point], 2)
         y_coord <- round(data()$Variable2[closest_point], 2)
         tagList(
@@ -620,7 +628,7 @@ server <- function(input, output, session) {
   output$debugging <- renderPrint({
     #logisticBoundary()
     print(paste0('user defined boundary coordinates: ', coords$x, coords$y, ' logistic boundary parameters: ', logisticBoundary()))
-    print(paste0('animal_classifier = ', IsAnimalClassifier()))
+    print(paste0('animal_classifier = ', isAnimalClassifier()))
     print(paste0('available animal categories: ', animal_classifier_avail_categories))
     print(paste0('selected animal categories: ', AnimalClassifierConfig()$categories))
     print(paste0('animal n: ', AnimalClassifierConfig()$n_animal))
