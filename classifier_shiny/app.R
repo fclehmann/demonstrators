@@ -250,11 +250,6 @@ server <- function(input, output, session) {
     load(file = 'data/animal_classifier-last_layer_data.Rdata')
     cat('existing obs: ', ls(), '\n')
     animal_classifier_avail_categories <- animal_classifier_df$true_class %>% unique()  
-    animal_classifier_df %<>% 
-      dplyr::select(-predicted_class_idx, -output_3) %>% 
-      mutate(Group = true_class)
-    # this renaming is done that the structure is compatible with existing calculation and drawing functions
-    animal_classifier_df %<>% rename(Variable1 = output_1, Variable2 = output_2)
     animal_classifier_df %<>% mutate(image_input = basename(image_input))
     animal_classifier_images <- list.files(path = 'www/', recursive = TRUE)
     animal_classifier_df %<>% mutate(image_input = animal_classifier_images[match(image_input, basename(animal_classifier_images))])
